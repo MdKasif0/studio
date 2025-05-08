@@ -11,7 +11,7 @@ export default function SignInPage() {
           <div className="mx-auto mb-4">
             <Leaf className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-bold">Welcome to NutriCoach AI</CardTitle>
+          <CardTitle className="text-3xl font-bold">Welcome to Nutri AI</CardTitle>
           <CardDescription>Your personalized nutrition journey starts here.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -21,3 +21,4 @@ export default function SignInPage() {
     </div>
   );
 }
+

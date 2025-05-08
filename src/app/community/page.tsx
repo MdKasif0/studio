@@ -44,7 +44,7 @@ export default function CommunityPage() {
     <div className="container mx-auto py-4 md:py-8">
       <header className="mb-8 md:mb-12 text-center">
         <Users className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">NutriCoach Community Hub</h1>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Nutri AI Community Hub</h1>
         <p className="mt-2 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
           Connect with fellow health enthusiasts! Share recipes, celebrate successes, find support, and join group challenges.
         </p>
@@ -125,3 +125,4 @@ export default function CommunityPage() {
     </div>
   );
 }
+

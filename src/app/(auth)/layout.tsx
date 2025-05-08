@@ -7,8 +7,8 @@ import { AppProviders } from "@/providers/AppProviders"; // Keep AppProviders fo
 const geistSans = GeistSans;
 
 export const metadata: Metadata = {
-  title: "Sign In - NutriCoach AI",
-  description: "Login or Sign Up for NutriCoach AI",
+  title: "Sign In - Nutri AI",
+  description: "Login or Sign Up for Nutri AI",
 };
 
 export default function AuthLayout({
@@ -30,3 +30,4 @@ export default function AuthLayout({
     </html>
   );
 }
+

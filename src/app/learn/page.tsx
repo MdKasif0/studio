@@ -47,7 +47,7 @@ export default function LearnPage() {
     {
       type: "Premium Support",
       title: "Expert Nutritionist Consultations",
-      description: "Connect with registered dietitians for personalized one-on-one guidance and advanced support. (Coming Soon)",
+      description: "Connect with registered dietitians for personalized one-on-one guidance and advanced support. (Nutri AI plans to offer this in the future)",
       icon: HelpingHand,
       link: "#",
       image: "https://picsum.photos/seed/learnsupport/400/200",
@@ -110,3 +110,4 @@ export default function LearnPage() {
     </div>
   );
 }
+

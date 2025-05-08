@@ -22,7 +22,7 @@ export function TopAppBar() {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
     }
-    return "NutriCoach AI";
+    return "Nutri AI";
   };
   
   const title = getCurrentPageTitle();
@@ -44,3 +44,4 @@ export function TopAppBar() {
     </header>
   );
 }
+

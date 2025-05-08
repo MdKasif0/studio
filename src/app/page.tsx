@@ -64,7 +64,7 @@ export default function HomePage() {
     {
       icon: Users,
       title: "Community Hub",
-      description: "Share recipes, success stories, and join group challenges with fellow NutriCoach users. (Coming Soon)",
+      description: "Share recipes, success stories, and join group challenges with fellow Nutri AI users. (Coming Soon)",
       link: "/community",
       cta: "Join Community",
       image: "https://picsum.photos/seed/communityhub/600/400",
@@ -126,7 +126,7 @@ export default function HomePage() {
       <header className="text-center space-y-4 pt-4 md:pt-0">
         <Leaf className="mx-auto h-12 w-12 md:h-16 md:w-16 text-primary" />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
-          Welcome to NutriCoach AI
+          Welcome to Nutri AI
         </h1>
         <p className="text-md md:text-xl text-muted-foreground max-w-3xl">
           Your intelligent partner for highly personalized nutrition. Achieve your health goals with AI-driven dietary analysis, custom meal plans, interactive coaching, and smart recipe suggestions.
@@ -166,7 +166,7 @@ export default function HomePage() {
 
       {/* Features Grid */}
       <section className="w-full max-w-7xl px-2 sm:px-0">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore NutriCoach Features</h2>
+        <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {features.map((feature) => (
             <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
@@ -203,7 +203,7 @@ export default function HomePage() {
       </section>
 
       <section className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How NutriCoach AI Elevates Your Journey</h2>
+        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How Nutri AI Elevates Your Journey</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-left">
           <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
             <h3 className="text-lg md:text-xl font-medium mb-2 text-primary">1. Deeply Personalize</h3>
@@ -222,4 +222,5 @@ export default function HomePage() {
     </div>
   );
 }
+
 

@@ -19,7 +19,7 @@ export default function ChatbotPage() {
         <CardHeader className="pb-4 px-4 md:px-6 pt-4 md:pt-6">
           <div className="flex items-center gap-2 md:gap-3 mb-2">
             <MessageSquareHeart className="h-7 w-7 md:h-8 md:w-8 text-accent" />
-            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">NutriCoach AI Assistant</CardTitle>
+            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Nutri AI Assistant</CardTitle>
           </div>
           <CardDescription className="text-muted-foreground text-sm md:text-base">
             Your personal AI guide for nutrition questions, help with using the app, and daily motivation. Ask me anything!
@@ -32,3 +32,4 @@ export default function ChatbotPage() {
     </div>
   );
 }
+

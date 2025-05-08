@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 const geistSans = GeistSans;
 
 export const metadata: Metadata = {
-  title: "NutriCoach AI",
+  title: "Nutri AI",
   description: "AI-Enabled Personalized Nutrition Coaching",
 };
 
@@ -30,3 +30,4 @@ export default function RootLayout({
     </html>
   );
 }
+

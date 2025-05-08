@@ -45,7 +45,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         <header className="h-14 border-b flex items-center px-6">
           <Leaf className="h-8 w-8 text-primary mr-2" />
-          <h1 className="text-xl font-semibold">NutriCoach AI</h1>
+          <h1 className="text-xl font-semibold">Nutri AI</h1>
         </header>
         <div className="flex flex-1">
           <aside className="w-64 border-r p-4 hidden md:block bg-sidebar text-sidebar-foreground">
@@ -80,14 +80,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         <SidebarHeader className="p-2">
           <Link href="/" className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity">
             <Leaf className="h-8 w-8 text-primary" />
-            <h1 className="text-xl font-semibold text-foreground">NutriCoach AI</h1>
+            <h1 className="text-xl font-semibold text-foreground">Nutri AI</h1>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarNav />
         </SidebarContent>
         <SidebarFooter className="p-4 text-xs text-muted-foreground border-t border-sidebar-border flex justify-between items-center">
-          <span>&copy; {new Date().getFullYear()} NutriCoach AI</span>
+          <span>&copy; {new Date().getFullYear()} Nutri AI</span>
           <ThemeToggleButton />
         </SidebarFooter>
       </Sidebar>
@@ -104,3 +104,4 @@ export function AppLayout({ children }: AppLayoutProps) {
     </SidebarProvider>
   );
 }
+

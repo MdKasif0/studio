@@ -20,7 +20,7 @@ export default function ProgressTrackingPage() {
         <ShieldAlert className="h-5 w-5" />
         <AlertTitle className="font-semibold text-base md:text-lg">Important Disclaimer</AlertTitle>
         <AlertDescription className="text-sm md:text-base">
-          NutriCoach AI is designed for informational and educational purposes only. It is not a medical tool and should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider regarding any health concerns or before making any decisions related to your health or treatment.
+          Nutri AI is designed for informational and educational purposes only. It is not a medical tool and should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider regarding any health concerns or before making any decisions related to your health or treatment.
         </AlertDescription>
       </Alert>
 
@@ -61,3 +61,4 @@ export default function ProgressTrackingPage() {
     </div>
   );
 }
+

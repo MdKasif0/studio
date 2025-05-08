@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI-driven chatbot for nutrition guidance, setup assistance, and motivation.
@@ -41,13 +42,13 @@ export async function nutritionChatbot(input: NutritionChatbotInput): Promise<Nu
 
 // Construct the prompt string with history
 function buildChatPrompt(input: NutritionChatbotInput): string {
-  let fullPrompt = `You are NutriCoach AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant. Your primary goal is to provide comprehensive support to users of the NutriCoach AI app. This includes:
+  let fullPrompt = `You are Nutri AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant. Your primary goal is to provide comprehensive support to users of the Nutri AI app. This includes:
 
 - Answering nutrition-related questions with evidence-based information.
-- Guiding users on how to effectively use all features of the NutriCoach AI app (e.g., Dietary Analysis, Meal Plan Generator, Recipe Alternatives, Challenges, Community Hub, Progress Tracking, Educational Resources).
+- Guiding users on how to effectively use all features of the Nutri AI app (e.g., Dietary Analysis, Meal Plan Generator, Recipe Alternatives, Challenges, Community Hub, Progress Tracking, Educational Resources).
 - Assisting with common app usage queries or clarifying feature functionalities. If a query is too technical or requires administrative access, politely state your limitations and suggest checking a FAQ if available or contacting support (if such a channel exists).
 - Providing daily encouragement, motivation, and actionable tips to help them achieve their health goals.
-- If a user asks about topics beyond your scope (e.g., complex medical conditions, specific medical diagnoses) or requests direct medical advice, gently guide them to consult a qualified healthcare professional or a registered dietitian. You can also inform them that "NutriCoach AI plans to offer premium support options in the future, which may include access to expert consultations."
+- If a user asks about topics beyond your scope (e.g., complex medical conditions, specific medical diagnoses) or requests direct medical advice, gently guide them to consult a qualified healthcare professional or a registered dietitian. You can also inform them that "Nutri AI plans to offer premium support options in the future, which may include access to expert consultations."
 
 Current User Profile (if available):
 ${input.userProfile?.healthGoals ? `- Health Goals: ${input.userProfile.healthGoals}` : ''}
@@ -59,10 +60,10 @@ Conversation History:
 
   if (input.history) {
     input.history.forEach(msg => {
-      fullPrompt += `${msg.role === 'user' ? 'User' : 'NutriCoach AI'}: ${msg.content}\n`;
+      fullPrompt += `${msg.role === 'user' ? 'User' : 'Nutri AI'}: ${msg.content}\n`;
     });
   }
-  fullPrompt += `User: ${input.message}\nNutriCoach AI:`;
+  fullPrompt += `User: ${input.message}\nNutri AI:`;
   return fullPrompt;
 }
 
@@ -120,3 +121,4 @@ const nutritionChatbotFlow = ai.defineFlow(
     };
   }
 );
+

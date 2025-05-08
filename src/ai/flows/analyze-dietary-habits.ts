@@ -1,4 +1,5 @@
-// This is an AI-powered personalized nutrition coach that analyzes dietary habits and restrictions, creating custom meal plans and recipe suggestions tailored to individual needs.
+
+// This is an AI-powered personalized nutrition coach (Nutri AI) that analyzes dietary habits and restrictions, creating custom meal plans and recipe suggestions tailored to individual needs.
 'use server';
 /**
  * @fileOverview Analyzes dietary habits, restrictions, preferences, and health goals to provide personalized insights and recommendations.
@@ -74,3 +75,4 @@ const analyzeDietaryHabitsFlow = ai.defineFlow(
     return output!;
   }
 );
+
