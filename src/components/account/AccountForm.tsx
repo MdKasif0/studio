@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,14 +25,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface AccountFormProps {
-  onSubmit: (data: AccountSettingsFormData) => Promise<void>;
-  initialData: AccountSettingsFormData;
+  onSubmit: (data: AccountSettingsFormData) => void; // This will be mutation.mutate
+  initialData?: AccountSettingsFormData; // Make initialData optional
+  isPending: boolean;
 }
 
-export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+export function AccountForm({ onSubmit, initialData, isPending }: AccountFormProps) {
   const form = useForm<AccountSettingsFormData>({
     resolver: zodResolver(accountSettingsSchema),
     defaultValues: initialData || {
@@ -42,24 +41,31 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
       email: "",
       primaryHealthGoal: undefined,
       dietaryRestrictions: {
+        glutenFree: false,
+        dairyFree: false,
+        vegetarian: false,
+        vegan: false,
+        nutAllergy: false,
+        shellfishAllergy: false,
+        soyAllergy: false,
+        lowCarb: false,
+        keto: false,
+        paleo: false,
+        lowFodmap: false,
         other: "",
       },
     },
   });
 
   React.useEffect(() => {
-    form.reset(initialData);
+    if (initialData) {
+      form.reset(initialData);
+    }
   }, [initialData, form]);
-
-  const handleSubmit = async (data: AccountSettingsFormData) => {
-    setIsSubmitting(true);
-    await onSubmit(data);
-    setIsSubmitting(false);
-  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="username"
@@ -67,7 +73,7 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="youruniqueusername" {...field} />
+                <Input placeholder="youruniqueusername" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,7 +86,7 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="you@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -93,7 +99,7 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Primary Health Goal</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isPending}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your primary health goal" />
@@ -115,8 +121,8 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
         <FormItem>
           <FormLabel>Dietary Restrictions (Optional)</FormLabel>
           <FormDescription className="pb-2">Select any that apply to you.</FormDescription>
-          <ScrollArea className="h-48 rounded-md border p-4">
-            <div className="space-y-3">
+          <ScrollArea className={cn("h-48 rounded-md border p-4", isPending && "opacity-50 pointer-events-none")}>
+             <fieldset disabled={isPending} className="space-y-3">
               {Object.entries(commonDietaryRestrictions).map(([key, label]) => (
                 <FormField
                   key={key}
@@ -153,12 +159,12 @@ export function AccountForm({ onSubmit, initialData }: AccountFormProps) {
                   </FormItem>
                 )}
               />
-            </div>
+            </fieldset>
           </ScrollArea>
         </FormItem>
 
-        <Button type="submit" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
       </form>

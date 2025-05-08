@@ -1,11 +1,55 @@
+"use client";
 
+import React from 'react';
+import { useMutation } from "@tanstack/react-query";
 import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, BarChart3, FilePlus2, ShieldAlert } from "lucide-react";
+import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { handleLogSymptom } from "@/lib/actions";
+import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 export default function ProgressTrackingPage() {
+  const { toast } = useToast();
+  const [defaultLogTime, setDefaultLogTime] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    // Set default log time for the form when component mounts on client
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+    setDefaultLogTime(localDate.toISOString().slice(0, 16));
+  }, []);
+
+  const symptomLogMutation = useMutation({
+    mutationFn: handleLogSymptom,
+    onSuccess: (data) => {
+      toast({
+        title: "Symptoms Logged",
+        description: data.message,
+      });
+      // Optionally, refetch progress data or update local state here
+      // Reset form default time for next entry
+      const now = new Date();
+      const offset = now.getTimezoneOffset();
+      const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+      setDefaultLogTime(localDate.toISOString().slice(0, 16));
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Logging Failed",
+        description: error.message || "Could not log symptoms.",
+      });
+    },
+  });
+
+  const onSymptomSubmit = (data: SymptomLogFormValues) => {
+    symptomLogMutation.mutate(data);
+  };
+
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8 md:space-y-12">
       <header className="text-center">
@@ -36,7 +80,20 @@ export default function ProgressTrackingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            <SymptomLogForm />
+            {symptomLogMutation.isError && (
+                <Alert variant="destructive" className="mb-4">
+                  <Terminal className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    {symptomLogMutation.error instanceof Error ? symptomLogMutation.error.message : "An unknown error occurred."}
+                  </AlertDescription>
+                </Alert>
+            )}
+            <SymptomLogForm 
+              onSubmit={onSymptomSubmit} 
+              isPending={symptomLogMutation.isPending}
+              initialDateTime={defaultLogTime} // Pass this to set form's default time
+            />
           </CardContent>
         </Card>
 
@@ -61,4 +118,3 @@ export default function ProgressTrackingPage() {
     </div>
   );
 }
-

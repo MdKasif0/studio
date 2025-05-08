@@ -17,11 +17,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import React from "react";
-import { useToast } from "@/hooks/use-toast";
 
-export function LoginForm() {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const { toast } = useToast();
+interface LoginFormProps {
+  onSubmit: (data: LoginFormData) => void; // This will be mutation.mutate
+  isPending: boolean;
+}
+
+export function LoginForm({ onSubmit, isPending }: LoginFormProps) {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -30,20 +32,6 @@ export function LoginForm() {
       rememberMe: false,
     },
   });
-
-  const onSubmit = async (data: LoginFormData) => {
-    setIsSubmitting(true);
-    console.log("Login data:", data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("Login submitted. In a real app, this would redirect or update auth state.");
-    toast({ 
-        title: "Login Attempted (Simulation)", 
-        description: "Actual login functionality is not implemented in this demo." 
-    });
-    setIsSubmitting(false);
-    // form.reset(); // Optionally reset form
-  };
 
   return (
     <Form {...form}>
@@ -55,7 +43,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Username or Email</FormLabel>
               <FormControl>
-                <Input placeholder="yourname or you@example.com" {...field} />
+                <Input placeholder="yourname or you@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -68,7 +56,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -84,6 +72,7 @@ export function LoginForm() {
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
+                    disabled={isPending}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
@@ -94,17 +83,16 @@ export function LoginForm() {
           />
           <Link
             href="#" // Replace with actual forgot password route
-            className="text-sm text-primary hover:underline"
+            className={cn("text-sm text-primary hover:underline", isPending && "pointer-events-none opacity-50")}
           >
             Forgot password?
           </Link>
         </div>
-        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Login
         </Button>
       </form>
     </Form>
   );
 }
-

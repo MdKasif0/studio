@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,11 +25,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-export function SignUpForm() {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const { toast } = useToast();
+interface SignUpFormProps {
+  onSubmit: (data: SignUpFormData) => void; // This will be mutation.mutate
+  isPending: boolean;
+}
+
+export function SignUpForm({ onSubmit, isPending }: SignUpFormProps) {
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -48,25 +50,13 @@ export function SignUpForm() {
         soyAllergy: false,
         lowCarb: false,
         keto: false,
+        paleo: false,
+        lowFodmap: false,
         other: "",
       },
-      primaryHealthGoal: undefined, // Or a default goal from healthGoals
+      primaryHealthGoal: undefined, 
     },
   });
-
-  const onSubmit = async (data: SignUpFormData) => {
-    setIsSubmitting(true);
-    console.log("Sign Up data:", data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("Sign Up submitted. In a real app, this would redirect or update auth state.");
-    toast({ 
-        title: "Sign Up Attempted (Simulation)", 
-        description: "Account creation functionality is not implemented in this demo." 
-    });
-    setIsSubmitting(false);
-    // form.reset(); // Optionally reset form
-  };
 
   return (
     <Form {...form}>
@@ -78,7 +68,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="youruniqueusername" {...field} />
+                <Input placeholder="youruniqueusername" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,7 +81,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="you@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -104,7 +94,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isPending} />
               </FormControl>
               <FormDescription>
                 Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character.
@@ -120,7 +110,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -133,7 +123,7 @@ export function SignUpForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Primary Health Goal</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isPending}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your primary health goal" />
@@ -155,8 +145,8 @@ export function SignUpForm() {
         <FormItem>
           <FormLabel>Dietary Restrictions (Optional)</FormLabel>
           <FormDescription className="pb-2">Select any that apply to you.</FormDescription>
-          <ScrollArea className="h-40 rounded-md border p-4">
-            <div className="space-y-3">
+          <ScrollArea className={cn("h-40 rounded-md border p-4", isPending && "opacity-50 pointer-events-none")}>
+            <fieldset disabled={isPending} className="space-y-3">
               {Object.entries(commonDietaryRestrictions).map(([key, label]) => (
                 <FormField
                   key={key}
@@ -193,16 +183,15 @@ export function SignUpForm() {
                   </FormItem>
                 )}
               />
-            </div>
+            </fieldset>
           </ScrollArea>
         </FormItem>
 
-        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Create Account
         </Button>
       </form>
     </Form>
   );
 }
-
