@@ -7,7 +7,7 @@ import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, 
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import React from "react";
-import { ThemeToggleButton } from "./ThemeToggleButton"; // Import ThemeToggleButton
+import { ThemeToggleButton } from "./ThemeToggleButton";
 import { Separator } from "../ui/separator";
 
 const mainNavItems = [
@@ -65,10 +65,7 @@ export function BottomNavigationBar() {
           <SheetContent side="bottom" className="h-[75vh] rounded-t-2xl flex flex-col p-0">
             <SheetHeader className="p-4 border-b border-border flex-row justify-between items-center">
               <SheetTitle className="text-lg">More Options</SheetTitle>
-              <SheetClose className="p-1 rounded-md hover:bg-muted">
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close</span>
-              </SheetClose>
+              {/* Removed explicit SheetClose here as SheetContent provides one by default */}
             </SheetHeader>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               <ul className="space-y-1">
