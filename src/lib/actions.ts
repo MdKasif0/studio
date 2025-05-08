@@ -1,4 +1,3 @@
-
 "use server";
 
 import {
@@ -16,6 +15,12 @@ import {
   type SuggestRecipeAlternativesInput,
   type SuggestRecipeAlternativesOutput,
 } from "@/ai/flows/suggest-recipe-alternatives";
+import {
+  nutritionChatbot,
+  type NutritionChatbotInput,
+  type NutritionChatbotOutput,
+} from "@/ai/flows/nutrition-chatbot-flow";
+
 
 export async function handleDietaryAnalysis(
   data: AnalyzeDietaryHabitsInput
@@ -25,7 +30,9 @@ export async function handleDietaryAnalysis(
     return result;
   } catch (error) {
     console.error("Error in handleDietaryAnalysis:", error);
-    throw new Error("Failed to analyze dietary habits. Please try again.");
+    // Check if error is an instance of Error to access message property safely
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to analyze dietary habits: ${errorMessage}. Please try again.`);
   }
 }
 
@@ -37,7 +44,8 @@ export async function handleMealPlanGeneration(
     return result;
   } catch (error) {
     console.error("Error in handleMealPlanGeneration:", error);
-    throw new Error("Failed to generate meal plan. Please try again.");
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to generate meal plan: ${errorMessage}. Please try again.`);
   }
 }
 
@@ -49,6 +57,25 @@ export async function handleRecipeSuggestion(
     return result;
   } catch (error) {
     console.error("Error in handleRecipeSuggestion:", error);
-    throw new Error("Failed to suggest recipe alternatives. Please try again.");
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to suggest recipe alternatives: ${errorMessage}. Please try again.`);
   }
 }
+
+export async function handleChatbotInteraction(
+  data: NutritionChatbotInput
+): Promise<NutritionChatbotOutput> {
+  try {
+    const result = await nutritionChatbot(data);
+    return result;
+  } catch (error) {
+    console.error("Error in handleChatbotInteraction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Chatbot interaction failed: ${errorMessage}. Please try again.`);
+  }
+}
+
+// Placeholder for future symptom logging action
+// export async function handleSymptomLogging(data: SymptomLogInput): Promise<SymptomLogOutput> {
+//   // ...
+// }

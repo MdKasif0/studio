@@ -3,7 +3,8 @@
 
 /**
  * @fileOverview Generates a custom meal plan based on user dietary needs, restrictions,
- * preferred ingredients, and desired calorie intake.
+ * preferred ingredients, health goals, cooking preferences, cuisine choices, lifestyle, family considerations,
+ * and feedback on previous plans.
  *
  * - generateCustomMealPlan - A function that generates a custom meal plan.
  * - GenerateCustomMealPlanInput - The input type for the generateCustomMealPlan function.
@@ -16,26 +17,48 @@ import {z} from 'genkit';
 const GenerateCustomMealPlanInputSchema = z.object({
   dietaryRestrictions: z
     .string()
-    .describe('Any dietary restrictions the user has (e.g., gluten-free, vegetarian, vegan).'),
+    .describe('Any dietary restrictions the user has (e.g., gluten-free, vegetarian, vegan, allergies).'),
   preferredIngredients: z
     .string()
-    .describe('Ingredients the user prefers to include in their meal plan.'),
+    .describe('Ingredients the user prefers to include or has readily available.'),
   calorieIntake: z
     .number()
     .describe('The desired daily calorie intake for the meal plan.'),
-  numberOfMeals: z.number().describe('The number of meals to include in the meal plan (e.g., 3 for breakfast, lunch, and dinner).'),
+  numberOfMeals: z.number().describe('The number of meals to include in the meal plan (e.g., 3 for breakfast, lunch, and dinner, plus optional snacks).'),
+  healthGoals: z.string().optional().describe('User health goals, e.g., weight loss, muscle gain, general wellness.'),
+  cookingTimePreference: z.string().optional().describe('Preferred cooking time per meal, e.g., quick (under 30 mins), moderate (30-60 mins), no preference.'),
+  cuisinePreferences: z.string().optional().describe('Favorite cuisines or types of food, e.g., Italian, Mexican, Asian, None.'),
+  lifestyle: z.string().optional().describe('User lifestyle, e.g., busy parent, athlete, student, sedentary office worker.'),
+  familyMembersDescription: z.string().optional().describe('Briefly describe the number of people and any key dietary considerations for the family, e.g., "Family of 4, 2 adults, 2 kids (ages 6, 10), one child is vegetarian."'),
+  previousPlanFeedback: z.string().optional().describe('Feedback on previous meal plans, e.g., "Loved the chicken recipes, but found breakfast too repetitive." This helps in refining future plans.'),
 });
 
 export type GenerateCustomMealPlanInput = z.infer<
   typeof GenerateCustomMealPlanInputSchema
 >;
 
+const MealSchema = z.object({
+  name: z.string().describe("Name of the meal (e.g., Breakfast, Lunch, Dinner, Snack)."),
+  dish: z.string().describe("Name of the dish for this meal."),
+  recipe: z.string().describe("Brief recipe or preparation instructions."),
+  notes: z.string().optional().describe("Any additional notes, like cooking tips or alternatives."),
+});
+
+const DailyPlanSchema = z.object({
+  day: z.string().describe("Day of the week or day number (e.g., Monday, Day 1)."),
+  meals: z.array(MealSchema).describe("List of meals for the day."),
+  estimatedCalories: z.number().optional().describe("Estimated total calories for the day."),
+  estimatedProtein: z.string().optional().describe("Estimated total protein for the day (e.g., '80g')."),
+  estimatedCarbs: z.string().optional().describe("Estimated total carbohydrates for the day (e.g., '150g')."),
+  estimatedFats: z.string().optional().describe("Estimated total fats for the day (e.g., '60g')."),
+});
+
+
 const GenerateCustomMealPlanOutputSchema = z.object({
-  mealPlan: z
-    .string()
-    .describe(
-      'A detailed meal plan that includes recipes, ingredients, and instructions, considering dietary restrictions, preferred ingredients, and desired calorie intake.'
-    ),
+  mealPlanTitle: z.string().describe("A catchy title for the generated meal plan."),
+  dailyPlans: z.array(DailyPlanSchema).describe("A list of daily meal plans, typically for 3-7 days."),
+  shoppingList: z.array(z.string()).describe('A consolidated list of grocery items needed for the entire meal plan. Categorize if possible (e.g., Produce, Proteins, Pantry).'),
+  preparationTips: z.array(z.string()).optional().describe("General tips for meal prepping or preparing the meals in this plan."),
 });
 
 export type GenerateCustomMealPlanOutput = z.infer<
@@ -52,16 +75,39 @@ const prompt = ai.definePrompt({
   name: 'generateCustomMealPlanPrompt',
   input: {schema: GenerateCustomMealPlanInputSchema},
   output: {schema: GenerateCustomMealPlanOutputSchema},
-  prompt: `You are a personal nutrition coach. Your job is to create personalized meal plans for users based on their dietary restrictions, preferred ingredients, and desired calorie intake.
+  prompt: `You are an expert AI Nutrition Coach and Meal Planner. Your task is to create a highly personalized, engaging, and practical meal plan for a user based on their comprehensive profile. The meal plan should ideally cover 3-7 days.
 
-  Consider the following when generating the meal plan:
-  * Dietary Restrictions: {{{dietaryRestrictions}}}
-  * Preferred Ingredients: {{{preferredIngredients}}}
-  * Desired Calorie Intake: {{{calorieIntake}}} calories
-  * Number of Meals: {{{numberOfMeals}}}
+User Profile & Preferences:
+*   Dietary Restrictions: {{{dietaryRestrictions}}}
+*   Preferred Ingredients/Available Food: {{{preferredIngredients}}}
+*   Desired Daily Calorie Intake: {{{calorieIntake}}} calories
+*   Number of Meals Per Day: {{{numberOfMeals}}}
+*   Health Goals: {{{healthGoals}}}
+*   Cooking Time Preference: {{{cookingTimePreference}}}
+*   Cuisine Preferences: {{{cuisinePreferences}}}
+*   Lifestyle: {{{lifestyle}}}
+*   Family Considerations: {{{familyMembersDescription}}} (If provided, ensure recipes are family-friendly and portioning advice considers this. If not provided, plan for one adult.)
+*   Feedback on Previous Plan (if any): {{{previousPlanFeedback}}} (Use this to improve the current plan)
 
-  Create a meal plan that is both healthy and enjoyable for the user.
-  Format the meal plan to be easy to follow with clear instructions and nutritional information for each meal.
+Meal Plan Requirements:
+1.  **Title**: Create a catchy and relevant title for the meal plan.
+2.  **Daily Plans**: For each day (aim for 3-7 days):
+    *   Specify the day (e.g., Monday, Day 1).
+    *   List each meal (e.g., Breakfast, Lunch, Dinner, Snack if appropriate based on numberOfMeals).
+    *   For each meal:
+        *   Provide the dish name.
+        *   Include a brief, easy-to-follow recipe or preparation instructions.
+        *   Add any relevant notes (e.g., quick tips, make-ahead suggestions).
+    *   Provide an estimated total for calories, protein, carbs, and fats for the day.
+3.  **Shopping List**: Generate a consolidated shopping list for all ingredients needed for the entire meal plan. Group items by category (e.g., Produce, Proteins, Dairy, Pantry Staples) if possible.
+4.  **Preparation Tips**: Offer 2-3 general tips for meal prepping or efficiently preparing the meals in this plan.
+5.  **Variety and Appeal**: Ensure the meal plan is varied, incorporates culturally diverse options if aligned with preferences, and is exciting. Avoid repetitive meals unless specifically requested or practical (e.g., batch-cooked lunches).
+6.  **Practicality**: Recipes should be realistic for the user's lifestyle and cooking time preference.
+7.  **Nutritional Balance**: While adhering to calorie targets, aim for a balanced distribution of macronutrients suitable for their health goals.
+
+Tone: Empathetic, encouraging, and professional. Make the user feel supported and excited to start their plan.
+
+Output Format: Strictly adhere to the defined output schema.
   `,
 });
 

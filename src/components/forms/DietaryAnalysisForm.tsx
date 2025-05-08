@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +23,10 @@ const formSchema = z.object({
     .min(10, { message: "Please describe your dietary habits in at least 10 characters." }),
   restrictions: z.string().optional(),
   preferences: z.string().optional(),
+  healthGoals: z
+    .string()
+    .min(5, { message: "Please describe your health goals in at least 5 characters." })
+    .optional(),
 });
 
 type DietaryAnalysisFormValues = z.infer<typeof formSchema>;
@@ -40,6 +43,7 @@ export function DietaryAnalysisForm({ onSubmit, isPending }: DietaryAnalysisForm
       dietaryHabits: "",
       restrictions: "",
       preferences: "",
+      healthGoals: "",
     },
   });
 
@@ -48,6 +52,7 @@ export function DietaryAnalysisForm({ onSubmit, isPending }: DietaryAnalysisForm
       dietaryHabits: values.dietaryHabits,
       restrictions: values.restrictions || "None",
       preferences: values.preferences || "None",
+      healthGoals: values.healthGoals || "General wellness",
     };
     onSubmit(inputData);
   };
@@ -69,7 +74,7 @@ export function DietaryAnalysisForm({ onSubmit, isPending }: DietaryAnalysisForm
                 />
               </FormControl>
               <FormDescription>
-                Describe your typical eating patterns, meal timings, and common food choices.
+                Describe your typical eating patterns, meal timings, common food choices, and portion sizes.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -103,19 +108,39 @@ export function DietaryAnalysisForm({ onSubmit, isPending }: DietaryAnalysisForm
               <FormLabel>Food Preferences and Dislikes (Optional)</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="e.g., Love spicy food, prefer chicken over fish, dislike mushrooms..."
+                  placeholder="e.g., Love spicy food, prefer chicken over fish, dislike mushrooms, favorite cuisines (Italian, Mexican)..."
                   rows={3}
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                Mention any strong likes or dislikes that should be considered.
+                Mention any strong likes, dislikes, or cuisine preferences.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+        <FormField
+          control={form.control}
+          name="healthGoals"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Health Goals (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="e.g., Weight loss (10 lbs), muscle gain, improve energy levels, manage bloating..."
+                  rows={3}
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                What are you hoping to achieve with your diet?
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

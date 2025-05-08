@@ -1,7 +1,7 @@
 // This is an AI-powered personalized nutrition coach that analyzes dietary habits and restrictions, creating custom meal plans and recipe suggestions tailored to individual needs.
 'use server';
 /**
- * @fileOverview Analyzes dietary habits, restrictions, and preferences to provide personalized insights and recommendations.
+ * @fileOverview Analyzes dietary habits, restrictions, preferences, and health goals to provide personalized insights and recommendations.
  *
  * - analyzeDietaryHabits - A function that handles the analysis of dietary habits.
  * - AnalyzeDietaryHabitsInput - The input type for the analyzeDietaryHabits function.
@@ -14,22 +14,26 @@ import {z} from 'genkit';
 const AnalyzeDietaryHabitsInputSchema = z.object({
   dietaryHabits: z
     .string()
-    .describe('Detailed description of current dietary habits.'),
+    .describe('Detailed description of current dietary habits, including typical meals, portion sizes, and eating frequency.'),
   restrictions: z
     .string()
-    .describe('Any dietary restrictions or allergies.'),
+    .describe('Any dietary restrictions, allergies, or intolerances (e.g., gluten-free, dairy-free, nut allergy).'),
   preferences: z
     .string()
-    .describe('Food preferences and dislikes.'),
+    .describe('Food preferences, favorite cuisines, disliked foods, and preferred cooking styles.'),
+  healthGoals: z
+    .string()
+    .describe('User health goals, e.g., weight loss, muscle gain, improved energy, better gut health, general wellness.'),
 });
 
 export type AnalyzeDietaryHabitsInput = z.infer<typeof AnalyzeDietaryHabitsInputSchema>;
 
 const AnalyzeDietaryHabitsOutputSchema = z.object({
-  insights: z.string().describe('Personalized insights based on dietary analysis.'),
+  insights: z.string().describe('Personalized insights based on the comprehensive dietary analysis, highlighting patterns and areas for improvement.'),
   recommendations: z
     .string()
-    .describe('Specific dietary recommendations tailored to the user.'),
+    .describe('Specific, actionable dietary recommendations tailored to the user’s habits, goals, restrictions, and preferences.'),
+  nutritionTips: z.array(z.string()).optional().describe('A list of general nutrition tips relevant to the user profile.'),
 });
 
 export type AnalyzeDietaryHabitsOutput = z.infer<typeof AnalyzeDietaryHabitsOutputSchema>;
@@ -42,13 +46,21 @@ const prompt = ai.definePrompt({
   name: 'analyzeDietaryHabitsPrompt',
   input: {schema: AnalyzeDietaryHabitsInputSchema},
   output: {schema: AnalyzeDietaryHabitsOutputSchema},
-  prompt: `Analyze the following dietary information and provide personalized insights and recommendations.
+  prompt: `You are an expert AI Nutrition Coach. Analyze the following dietary information for a user and provide personalized insights, actionable recommendations, and relevant nutrition tips.
 
-Dietary Habits: {{{dietaryHabits}}}
-Restrictions: {{{restrictions}}}
-Preferences: {{{preferences}}}
+User Profile:
+- Current Dietary Habits: {{{dietaryHabits}}}
+- Dietary Restrictions/Allergies: {{{restrictions}}}
+- Food Preferences/Dislikes: {{{preferences}}}
+- Health Goals: {{{healthGoals}}}
 
-Provide insights and recommendations in a clear and actionable manner.`,
+Based on this profile:
+1.  **Insights**: Provide a detailed analysis of their current habits. What are they doing well? What are the potential areas for improvement concerning their health goals?
+2.  **Recommendations**: Offer specific, actionable advice. For example, instead of "eat more vegetables," suggest "try incorporating a side salad with lunch and dinner" or "add spinach to your morning smoothie." Recommendations should align with their preferences and restrictions.
+3.  **Nutrition Tips**: Provide 2-3 general nutrition tips that are particularly relevant to their profile and goals.
+
+Present the output in a clear, empathetic, and encouraging tone. Ensure the advice is practical and sustainable for the user.
+`,
 });
 
 const analyzeDietaryHabitsFlow = ai.defineFlow(

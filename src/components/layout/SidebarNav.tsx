@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -7,10 +6,14 @@ import {
   Home,
   ClipboardList,
   Utensils,
-  Lightbulb,
   Replace,
-  Leaf,
-  MenuSquare,
+  MessageSquareHeart,
+  Award,
+  Users,
+  BookOpen,
+  BarChart3,
+  HeartHandshake, // Changed from Users2, more fitting for family
+  Leaf, // Keeping Leaf for main brand
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -32,6 +35,36 @@ const navItems = [
     label: "Recipe Alternatives",
     icon: Replace,
   },
+  {
+    href: "/chatbot",
+    label: "AI Assistant",
+    icon: MessageSquareHeart,
+  },
+  {
+    href: "/challenges",
+    label: "Challenges",
+    icon: Award,
+  },
+  {
+    href: "/community",
+    label: "Community",
+    icon: Users,
+  },
+  {
+    href: "/meal-plan", // Family plan will enhance the meal plan page for now
+    label: "Family Meal Plan",
+    icon: HeartHandshake,
+  },
+  {
+    href: "/learn",
+    label: "Learn Nutrition",
+    icon: BookOpen,
+  },
+  {
+    href: "/progress-tracking",
+    label: "Progress Tracking",
+    icon: BarChart3,
+  },
 ];
 
 export function SidebarNav() {
@@ -40,14 +73,14 @@ export function SidebarNav() {
   return (
     <SidebarMenu>
       {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
+        <SidebarMenuItem key={item.href + item.label}> {/* Ensure unique key if href can be same */}
           <Link href={item.href} passHref legacyBehavior>
             <SidebarMenuButton
               asChild
-              isActive={pathname === item.href}
+              isActive={pathname === item.href && (item.href !== "/meal-plan" || (item.href === "/meal-plan" && (item.label === "Meal Plan Generator" && pathname === "/meal-plan" || item.label === "Family Meal Plan" && pathname === "/meal-plan" ) ) )}
               className={cn(
                 "w-full justify-start",
-                pathname === item.href && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
+                pathname === item.href && (item.href !== "/meal-plan" || (item.href === "/meal-plan" && (item.label === "Meal Plan Generator" && pathname === "/meal-plan" || item.label === "Family Meal Plan" && pathname === "/meal-plan" ))) && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
               )}
               tooltip={item.label}
             >

@@ -8,55 +8,54 @@ body {
 
 @layer base {
   :root {
-    --background: 60 56% 91%; /* Beige #F5F5DC */
-    --foreground: 120 25% 15%; /* Dark Green for text on beige */
+    --background: 60 56% 97%; /* Lighter Beige #FAFAD2 (LightGoldenRodYellow) for a bit more brightness */
+    --foreground: 120 25% 15%; /* Dark Green for text */
 
-    --card: 60 50% 95%; /* Lighter Beige for cards */
+    --card: 60 50% 95%; /* Beige #F5F5DC for cards */
     --card-foreground: 120 25% 15%; /* Dark Green */
 
     --popover: 60 50% 98%; /* Lightest Beige for popovers */
     --popover-foreground: 120 25% 15%; /* Dark Green */
 
-    --primary: 127 32% 73%; /* Light Green #A7D1AB */
-    --primary-foreground: 120 60% 10%; /* Darker Green for text on light green */
+    --primary: 130 45% 65%; /* Light Green #A7D1AB */
+    --primary-foreground: 0 0% 100%; /* White for text on primary */
 
-    --secondary: 127 20% 85%; /* Lighter shade of green */
-    --secondary-foreground: 120 30% 20%; /* Darker Green for text on secondary */
+    --secondary: 60 100% 95%; /* Beige #F5F5DC - using as a light, clean secondary */
+    --secondary-foreground: 120 25% 20%; /* Dark Green for text on beige secondary */
 
-    --muted: 60 40% 85%; /* Muted beige */
+    --muted: 60 40% 90%; /* Muted beige */
     --muted-foreground: 60 20% 40%; /* Darker muted beige for less important text */
 
-    --accent: 33 100% 63%; /* Orange #FFB347 */
+    --accent: 30 100% 65%; /* Orange #FFB347 */
     --accent-foreground: 0 0% 100%; /* White for text on orange */
 
     --destructive: 0 72% 51%; /* A slightly softer red */
     --destructive-foreground: 0 0% 98%; /* White */
 
-    --border: 127 20% 65%; /* Muted green for borders */
-    --input: 60 40% 93%; /* Light beige for input backgrounds, ensuring contrast */
-    --ring: 33 100% 70%; /* Orange for focus rings, matching accent */
+    --border: 130 30% 80%; /* Muted light green for borders */
+    --input: 60 60% 96%; /* Light beige for input backgrounds */
+    --ring: 30 100% 70%; /* Orange for focus rings, matching accent */
 
     --radius: 0.5rem;
 
-    /* Sidebar specific colors - can be themed differently or inherit */
-    --sidebar-background: 127 15% 92%; /* Slightly greener beige or light green tint for sidebar */
-    --sidebar-foreground: 120 25% 15%;
-    --sidebar-primary: 33 100% 63%; /* Orange for active/important sidebar items */
+    /* Sidebar specific colors */
+    --sidebar-background: 130 25% 94%; /* Tinted green-beige for sidebar */
+    --sidebar-foreground: 120 25% 10%;
+    --sidebar-primary: 30 100% 65%; /* Orange for active/important sidebar items */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 127 32% 73%; /* Light green for hover/accent in sidebar */
-    --sidebar-accent-foreground: 120 60% 10%;
-    --sidebar-border: 127 20% 65%;
-    --sidebar-ring: 33 100% 70%;
+    --sidebar-accent: 130 45% 75%; /* Lighter Green for hover/accent in sidebar */
+    --sidebar-accent-foreground: 120 30% 10%;
+    --sidebar-border: 130 20% 80%;
+    --sidebar-ring: 30 100% 70%;
 
-    --chart-1: 127 32% 73%; /* Light Green */
-    --chart-2: 33 100% 63%; /* Orange */
-    --chart-3: 60 50% 70%; /* Darker Beige */
-    --chart-4: 127 40% 50%; /* Medium Green */
-    --chart-5: 33 80% 50%; /* Darker Orange */
+    --chart-1: 130 45% 65%; /* Light Green */
+    --chart-2: 30 100% 65%; /* Orange */
+    --chart-3: 60 50% 80%; /* Lighter Beige */
+    --chart-4: 130 40% 50%; /* Medium Green */
+    --chart-5: 30 80% 55%; /* Darker Orange */
   }
 
   .dark {
-    /* Keeping dark theme mostly default but adjusting to fit the general palette if needed */
     --background: 120 10% 10%; /* Dark Greenish Black */
     --foreground: 60 30% 90%; /* Light Beige/Off-white */
 
@@ -66,34 +65,34 @@ body {
     --popover: 120 10% 8%;
     --popover-foreground: 60 30% 90%;
 
-    --primary: 127 32% 65%; /* Light Green, slightly desaturated for dark mode */
-    --primary-foreground: 120 70% 15%; /* Very Dark Green */
+    --primary: 130 40% 55%; /* Light Green (slightly desaturated for dark) */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 120 15% 25%; /* Dark Muted Green */
+    --secondary: 60 20% 20%; /* Dark Beige */
     --secondary-foreground: 60 30% 85%;
 
     --muted: 120 10% 20%;
     --muted-foreground: 60 20% 60%;
 
-    --accent: 33 100% 63%; /* Orange */
-    --accent-foreground: 20 14.3% 4.1%; /* Dark color for text on orange in dark mode */
+    --accent: 30 90% 60%; /* Orange (slightly desaturated for dark) */
+    --accent-foreground: 0 0% 100%; /* White */
 
     --destructive: 0 63% 40%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 120 15% 30%;
-    --input: 120 15% 20%;
-    --ring: 33 100% 70%; /* Orange for focus rings */
+    --border: 130 20% 30%; /* Muted dark green for borders */
+    --input: 60 15% 25%; /* Darker beige for input */
+    --ring: 30 90% 65%; /* Orange for focus rings */
 
     /* Sidebar specific colors for dark mode */
-    --sidebar-background: 120 10% 12%;
+    --sidebar-background: 130 10% 12%; /* Dark green-tinted */
     --sidebar-foreground: 60 30% 88%;
-    --sidebar-primary: 33 100% 63%;
-    --sidebar-primary-foreground: 20 14.3% 4.1%;
-    --sidebar-accent: 127 32% 65%;
-    --sidebar-accent-foreground: 120 70% 15%;
-    --sidebar-border: 120 15% 30%;
-    --sidebar-ring: 33 100% 70%;
+    --sidebar-primary: 30 90% 60%; /* Orange */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 130 40% 50%; /* Lighter Green for dark */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 130 15% 28%;
+    --sidebar-ring: 30 90% 65%;
   }
 }
 
