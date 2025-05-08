@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+// Removed GeistMono import as it was causing a module not found error and is not explicitly used.
+// If mono font is needed later, ensure the path is correct or the package is installed.
 import "./globals.css";
 import { AppProviders } from "@/providers/AppProviders";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { AppLayout } from "@/components/layout/AppLayout"; // Updated import
 
 const geistSans = GeistSans;
-const geistMono = GeistMono;
+// const geistMono = GeistMono; // Commented out due to error
 
 export const metadata: Metadata = {
   title: "NutriCoach AI",
@@ -21,7 +22,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        // className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`} // Adjusted to remove geistMono variable
+        className={`${geistSans.variable} font-sans antialiased`}
       >
         <AppProviders>
           <AppLayout>{children}</AppLayout>

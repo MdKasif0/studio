@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,14 +19,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const symptomLogSchema = z.object({
   mealName: z.string().min(1, "Please enter the meal name or description."),
-  logTime: z.string().min(1, "Please select the time of logging."), // Could be more specific with date-time picker
+  logTime: z.string().min(1, "Please select the time of logging."),
   energyLevel: z.enum(["low", "medium", "high", "unchanged"]).optional(),
   mood: z.string().optional(),
-  digestiveSymptoms: z.string().optional(), // e.g., bloating, discomfort, none
+  digestiveSymptoms: z.string().optional(),
   otherSymptoms: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -34,13 +35,24 @@ type SymptomLogFormValues = z.infer<typeof symptomLogSchema>;
 
 export function SymptomLogForm() {
   const { toast } = useToast();
-  const [isPending, setIsPending] = React.useState(false); // Placeholder for actual submission logic
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [defaultLogTime, setDefaultLogTime] = useState("");
+
+  useEffect(() => {
+    // Set default log time on client mount to avoid hydration issues with datetime-local
+    const now = new Date();
+    // Adjust for local timezone
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset*60*1000));
+    setDefaultLogTime(localDate.toISOString().slice(0,16));
+  }, []);
+
 
   const form = useForm<SymptomLogFormValues>({
     resolver: zodResolver(symptomLogSchema),
     defaultValues: {
       mealName: "",
-      logTime: new Date().toISOString().substring(0, 16), // Default to current time
+      logTime: "", // Will be set by useEffect
       energyLevel: "unchanged",
       mood: "",
       digestiveSymptoms: "",
@@ -49,22 +61,50 @@ export function SymptomLogForm() {
     },
   });
 
+  // Update form default when defaultLogTime is ready
+  useEffect(() => {
+    if (defaultLogTime && !form.getValues("logTime")) {
+      form.reset({ ...form.getValues(), logTime: defaultLogTime });
+    }
+  }, [defaultLogTime, form]);
+
+
   const handleSubmit = async (values: SymptomLogFormValues) => {
-    setIsPending(true);
-    // Placeholder: In a real app, this would submit to a backend/AI flow
+    setIsSubmitting(true);
     console.log("Symptom Log Submitted:", values);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
     toast({
       title: "Symptom Logged (Simulation)",
       description: "Your feelings have been recorded. This data will help refine future suggestions (feature in development).",
     });
-    form.reset();
-    setIsPending(false);
+    form.reset({
+      mealName: "",
+      logTime: defaultLogTime, // Reset to current time after submission
+      energyLevel: "unchanged",
+      mood: "",
+      digestiveSymptoms: "",
+      otherSymptoms: "",
+      notes: "",
+    });
+    setIsSubmitting(false);
   };
+
+  if (!defaultLogTime) {
+    // Render a loading state or null until defaultLogTime is set
+    return (
+      <div className="space-y-6">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 md:space-y-6">
         <FormField
           control={form.control}
           name="mealName"
@@ -97,7 +137,7 @@ export function SymptomLogForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Energy Level Post-Meal</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select energy level" />
@@ -123,7 +163,7 @@ export function SymptomLogForm() {
               <FormControl>
                 <Input placeholder="e.g., Bloated, comfortable, gassy, none" {...field} />
               </FormControl>
-              <FormDescription>Note any digestive comfort or discomfort.</FormDescription>
+              <FormDescription className="text-xs">Note any digestive comfort or discomfort.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -167,8 +207,8 @@ export function SymptomLogForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-          {isPending ? (
+        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+          {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Logging...

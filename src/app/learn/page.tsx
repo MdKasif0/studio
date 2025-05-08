@@ -1,7 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { BookOpen, Youtube, Lightbulb, CookingPot, HelpingHand } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
 
 export default function LearnPage() {
   const resources = [
@@ -53,50 +56,55 @@ export default function LearnPage() {
   ];
 
   return (
-    <div className="container mx-auto py-8">
-      <header className="mb-12 text-center">
-        <BookOpen className="mx-auto h-16 w-16 text-accent mb-4" />
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">Knowledge & Support Hub</h1>
-        <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
+    <div className="container mx-auto py-4 md:py-8">
+      <header className="mb-8 md:mb-12 text-center">
+        <BookOpen className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Knowledge & Support Hub</h1>
+        <p className="mt-2 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
           Expand your nutrition knowledge and find support. Explore articles, videos, guides, recipes, and future premium consultation options.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
         {resources.map((resource, index) => (
           <Card key={index} className="shadow-xl overflow-hidden flex flex-col">
-            <div className="relative h-48 w-full">
+            <div className="relative h-40 md:h-48 w-full">
               <Image
                 src={resource.image}
                 alt={resource.title}
-                layout="fill"
-                objectFit="cover"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover"
                 data-ai-hint={resource.aiHint}
               />
             </div>
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <resource.icon className="h-7 w-7 text-primary" />
+            <CardHeader className="p-4">
+              <div className="flex items-start gap-2 md:gap-3 mb-1 md:mb-2">
+                <resource.icon className="h-6 w-6 md:h-7 md:w-7 text-primary mt-1" />
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{resource.type}</p>
-                  <CardTitle className="text-xl">{resource.title}</CardTitle>
+                  <CardTitle className="text-lg md:text-xl leading-tight">{resource.title}</CardTitle>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="flex-grow">
-              <CardDescription className="h-20">{resource.description}</CardDescription>
+            <CardContent className="p-4 flex-grow">
+              <CardDescription className="h-16 md:h-20 text-sm">{resource.description}</CardDescription>
             </CardContent>
-            <CardContent className="mt-auto">
-              <Link href={resource.link} passHref>
-                <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-md transition-colors disabled:opacity-50" disabled>
-                  {resource.type === "Premium Support" ? "Learn More (Coming Soon)" : "Read More (Coming Soon)"}
-                </button>
+            <CardFooter className="p-4 mt-auto">
+              <Link href={resource.link} passHref legacyBehavior>
+                <Button 
+                  asChild 
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm" 
+                  disabled={true} // Kept disabled as per original, update if functionality is added
+                >
+                  <a>{resource.type === "Premium Support" ? "Learn More (Soon)" : "Read More (Soon)"}</a>
+                </Button>
               </Link>
-            </CardContent>
+            </CardFooter>
           </Card>
         ))}
       </div>
-      <p className="text-center mt-12 text-sm text-muted-foreground">
+      <p className="text-center mt-8 md:mt-12 text-xs md:text-sm text-muted-foreground">
         We're constantly adding new educational content and support features. Check back soon for more!
       </p>
     </div>

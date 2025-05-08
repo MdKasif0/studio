@@ -44,21 +44,21 @@ export default function MealPlanPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-3xl py-8">
+    <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8"> {/* Adjusted padding and width */}
       <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold tracking-tight">Custom Meal Plan Generator</CardTitle>
-          <CardDescription className="text-muted-foreground">
+        <CardHeader className="px-4 pt-4 md:px-6 md:pt-6">
+          <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Custom Meal Plan Generator</CardTitle>
+          <CardDescription className="text-muted-foreground text-sm md:text-base">
             Tell us your needs, and our AI will craft a personalized meal plan for you.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 md:px-6 md:pb-6">
           <MealPlanForm
             onSubmit={handleSubmit}
             isPending={mutation.isPending}
           />
           {mutation.isError && (
-             <Alert variant="destructive" className="mt-8">
+             <Alert variant="destructive" className="mt-6 md:mt-8">
              <Terminal className="h-4 w-4" />
              <AlertTitle>Error</AlertTitle>
              <AlertDescription>

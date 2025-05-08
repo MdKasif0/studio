@@ -122,35 +122,35 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="flex flex-col items-center space-y-12 p-4 md:p-8">
-      <header className="text-center space-y-4">
-        <Leaf className="mx-auto h-16 w-16 text-primary" />
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+    <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full"> {/* Removed p-4/p-8, handled by AppLayout main */}
+      <header className="text-center space-y-4 pt-4 md:pt-0">
+        <Leaf className="mx-auto h-12 w-12 md:h-16 md:w-16 text-primary" />
+        <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
           Welcome to NutriCoach AI
         </h1>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-3xl">
+        <p className="text-md md:text-xl text-muted-foreground max-w-3xl">
           Your intelligent partner for highly personalized nutrition. Achieve your health goals with AI-driven dietary analysis, custom meal plans, interactive coaching, and smart recipe suggestions.
         </p>
       </header>
 
       {/* At-a-Glance Dashboard Section */}
-      <section className="w-full max-w-7xl">
-        <h2 className="text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="w-full max-w-7xl px-2 sm:px-0">
+        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {dashboardSnippets.map((snippet) => (
-            <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
-              <CardHeader>
+            <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-1">
-                  <snippet.icon className="h-7 w-7 text-accent" />
-                  <CardTitle className="text-xl">{snippet.title}</CardTitle>
+                  <snippet.icon className="h-6 w-6 md:h-7 md:w-7 text-accent" />
+                  <CardTitle className="text-lg md:text-xl">{snippet.title}</CardTitle>
                 </div>
-                <CardDescription className="text-card-foreground/80 h-16">
+                <CardDescription className="text-card-foreground/80 h-16 text-sm">
                   {snippet.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto">
                 <Link href={snippet.link} passHref>
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
                     {snippet.cta}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -159,18 +159,18 @@ export default function HomePage() {
             </Card>
           ))}
         </div>
-        <p className="text-center mt-6 text-sm text-muted-foreground">
+        <p className="text-center mt-6 text-xs md:text-sm text-muted-foreground">
           This is a preview. Full dashboard functionality with live, personalized data is coming soon!
         </p>
       </section>
 
       {/* Features Grid */}
-      <section className="w-full max-w-7xl">
-        <h2 className="text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore NutriCoach Features</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <section className="w-full max-w-7xl px-2 sm:px-0">
+        <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore NutriCoach Features</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {features.map((feature) => (
-            <Card key={feature.title} className="flex flex-col overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-card">
-              <div className="relative h-48 w-full">
+            <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
+              <div className="relative h-40 md:h-48 w-full">
                 <Image
                   src={feature.image}
                   alt={feature.title}
@@ -179,18 +179,18 @@ export default function HomePage() {
                   data-ai-hint={feature.aiHint}
                 />
               </div>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-2">
-                  <feature.icon className="h-8 w-8 text-accent" />
-                  <CardTitle className="text-2xl">{feature.title}</CardTitle>
+                  <feature.icon className="h-7 w-7 md:h-8 md:w-8 text-accent" />
+                  <CardTitle className="text-xl md:text-2xl">{feature.title}</CardTitle>
                 </div>
-                <CardDescription className="text-card-foreground/80 h-24"> {/* Fixed height for description */}
+                <CardDescription className="text-card-foreground/80 h-20 md:h-24 text-sm">
                   {feature.description}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="mt-auto"> {/* Pushes button to the bottom */}
+              <CardContent className="mt-auto">
                 <Link href={feature.link} passHref>
-                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-sm md:text-base">
                     {feature.cta}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -201,25 +201,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="w-full max-w-4xl text-center py-12">
-        <h2 className="text-3xl font-semibold mb-6 text-foreground">How NutriCoach AI Elevates Your Journey</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          <div className="p-6 bg-card rounded-lg shadow-md">
-            <h3 className="text-xl font-medium mb-2 text-primary">1. Deeply Personalize</h3>
-            <p className="text-muted-foreground">Share your unique habits, goals, and preferences. Our AI listens and learns.</p>
+      <section className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0">
+        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How NutriCoach AI Elevates Your Journey</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-left">
+          <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
+            <h3 className="text-lg md:text-xl font-medium mb-2 text-primary">1. Deeply Personalize</h3>
+            <p className="text-sm text-muted-foreground">Share your unique habits, goals, and preferences. Our AI listens and learns.</p>
           </div>
-          <div className="p-6 bg-card rounded-lg shadow-md">
-            <h3 className="text-xl font-medium mb-2 text-primary">2. AI-Powered Insights</h3>
-            <p className="text-muted-foreground">Receive intelligent analysis, custom plans, and continuous support from our advanced AI.</p>
+          <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
+            <h3 className="text-lg md:text-xl font-medium mb-2 text-primary">2. AI-Powered Insights</h3>
+            <p className="text-sm text-muted-foreground">Receive intelligent analysis, custom plans, and continuous support from our advanced AI.</p>
           </div>
-          <div className="p-6 bg-card rounded-lg shadow-md">
-            <h3 className="text-xl font-medium mb-2 text-primary">3. Engage & Evolve</h3>
-            <p className="text-muted-foreground">Stay motivated with interactive tools, challenges, and resources that adapt with you.</p>
+          <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
+            <h3 className="text-lg md:text-xl font-medium mb-2 text-primary">3. Engage & Evolve</h3>
+            <p className="text-sm text-muted-foreground">Stay motivated with interactive tools, challenges, and resources that adapt with you.</p>
           </div>
         </div>
       </section>
     </div>
   );
 }
-
-    
