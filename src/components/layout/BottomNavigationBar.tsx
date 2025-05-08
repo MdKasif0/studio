@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, Replace, Award, Users, BookOpen, Settings } from "lucide-react";
+import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, Replace, Award, Users, BookOpen, Settings, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import React from "react";
@@ -23,6 +23,7 @@ const moreNavItems = [
   { href: "/challenges", label: "Challenges", icon: Award },
   { href: "/community", label: "Community", icon: Users },
   { href: "/learn", label: "Learn Nutrition", icon: BookOpen },
+  { href: "/account", label: "Account", icon: UserCog },
 ];
 
 export function BottomNavigationBar() {

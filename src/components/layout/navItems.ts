@@ -9,6 +9,7 @@ import {
   Users,
   BookOpen,
   BarChart3,
+  UserCog, 
   // HeartHandshake, // Removed as "Family Meal Plan" specific nav item is removed
 } from "lucide-react";
 
@@ -51,5 +52,10 @@ export const navItems = [
     href: "/progress-tracking",
     label: "Progress Tracking",
     icon: BarChart3,
+  },
+  {
+    href: "/account",
+    label: "Account Settings",
+    icon: UserCog,
   },
 ];
