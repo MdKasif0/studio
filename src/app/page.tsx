@@ -1,6 +1,7 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake } from "lucide-react";
+import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -89,6 +90,37 @@ export default function HomePage() {
     },
   ];
 
+  const dashboardSnippets = [
+    {
+      icon: Apple,
+      title: "Today's Lunch Suggestion",
+      description: "Quinoa salad with roasted vegetables. A light yet fulfilling option!",
+      link: "/meal-plan",
+      cta: "View Full Meal Plan",
+    },
+    {
+      icon: ShoppingCart,
+      title: "Shopping List Quick View",
+      description: "Remember to pick up: avocados, spinach, and whole-grain bread.",
+      link: "/meal-plan", // Assuming shopping list is part of meal plan
+      cta: "See Full List",
+    },
+    {
+      icon: Activity,
+      title: "Your Progress Snapshot",
+      description: "You've logged meals for 5 days straight! Keep it up!",
+      link: "/progress-tracking",
+      cta: "Track Details",
+    },
+    {
+      icon: Users,
+      title: "Community Highlights",
+      description: "'Vegan Delights' group is discussing new protein sources. Join the chat!",
+      link: "/community",
+      cta: "Visit Community",
+    },
+  ];
+
   return (
     <div className="flex flex-col items-center space-y-12 p-4 md:p-8">
       <header className="text-center space-y-4">
@@ -101,38 +133,73 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl">
-        {features.map((feature) => (
-          <Card key={feature.title} className="flex flex-col overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-card">
-            <div className="relative h-48 w-full">
-              <Image
-                src={feature.image}
-                alt={feature.title}
-                layout="fill"
-                objectFit="cover"
-                data-ai-hint={feature.aiHint}
-              />
-            </div>
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <feature.icon className="h-8 w-8 text-accent" />
-                <CardTitle className="text-2xl">{feature.title}</CardTitle>
+      {/* At-a-Glance Dashboard Section */}
+      <section className="w-full max-w-7xl">
+        <h2 className="text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {dashboardSnippets.map((snippet) => (
+            <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-1">
+                  <snippet.icon className="h-7 w-7 text-accent" />
+                  <CardTitle className="text-xl">{snippet.title}</CardTitle>
+                </div>
+                <CardDescription className="text-card-foreground/80 h-16">
+                  {snippet.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="mt-auto">
+                <Link href={snippet.link} passHref>
+                  <Button variant="outline" size="sm" className="w-full">
+                    {snippet.cta}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <p className="text-center mt-6 text-sm text-muted-foreground">
+          This is a preview. Full dashboard functionality with live, personalized data is coming soon!
+        </p>
+      </section>
+
+      {/* Features Grid */}
+      <section className="w-full max-w-7xl">
+        <h2 className="text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore NutriCoach Features</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature) => (
+            <Card key={feature.title} className="flex flex-col overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-card">
+              <div className="relative h-48 w-full">
+                <Image
+                  src={feature.image}
+                  alt={feature.title}
+                  layout="fill"
+                  objectFit="cover"
+                  data-ai-hint={feature.aiHint}
+                />
               </div>
-              <CardDescription className="text-card-foreground/80 h-24"> {/* Fixed height for description */}
-                {feature.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="mt-auto"> {/* Pushes button to the bottom */}
-              <Link href={feature.link} passHref>
-                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                  {feature.cta}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <feature.icon className="h-8 w-8 text-accent" />
+                  <CardTitle className="text-2xl">{feature.title}</CardTitle>
+                </div>
+                <CardDescription className="text-card-foreground/80 h-24"> {/* Fixed height for description */}
+                  {feature.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="mt-auto"> {/* Pushes button to the bottom */}
+                <Link href={feature.link} passHref>
+                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                    {feature.cta}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       <section className="w-full max-w-4xl text-center py-12">
         <h2 className="text-3xl font-semibold mb-6 text-foreground">How NutriCoach AI Elevates Your Journey</h2>
@@ -154,3 +221,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
