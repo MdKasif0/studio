@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -18,9 +17,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import React from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { toast } = useToast();
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -35,7 +36,11 @@ export function LoginForm() {
     console.log("Login data:", data);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    alert("Login submitted (check console). Actual login not implemented.");
+    console.log("Login submitted. In a real app, this would redirect or update auth state.");
+    toast({ 
+        title: "Login Attempted (Simulation)", 
+        description: "Actual login functionality is not implemented in this demo." 
+    });
     setIsSubmitting(false);
     // form.reset(); // Optionally reset form
   };
@@ -102,3 +107,4 @@ export function LoginForm() {
     </Form>
   );
 }
+

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -27,9 +26,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 export function SignUpForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { toast } = useToast();
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -58,7 +59,11 @@ export function SignUpForm() {
     console.log("Sign Up data:", data);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    alert("Sign Up submitted (check console). Actual sign-up not implemented.");
+    console.log("Sign Up submitted. In a real app, this would redirect or update auth state.");
+    toast({ 
+        title: "Sign Up Attempted (Simulation)", 
+        description: "Account creation functionality is not implemented in this demo." 
+    });
     setIsSubmitting(false);
     // form.reset(); // Optionally reset form
   };
@@ -200,3 +205,4 @@ export function SignUpForm() {
     </Form>
   );
 }
+
