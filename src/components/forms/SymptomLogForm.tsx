@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const symptomLogSchema = z.object({
   mealName: z.string().min(1, "Please enter the meal name or description."),
@@ -36,9 +37,11 @@ type SymptomLogFormValues = z.infer<typeof symptomLogSchema>;
 export function SymptomLogForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [defaultLogTime, setDefaultLogTime] = useState("");
 
   useEffect(() => {
+    setIsClient(true);
     // Set default log time on client mount to avoid hydration issues with datetime-local
     const now = new Date();
     // Adjust for local timezone
@@ -52,7 +55,7 @@ export function SymptomLogForm() {
     resolver: zodResolver(symptomLogSchema),
     defaultValues: {
       mealName: "",
-      logTime: "", // Will be set by useEffect
+      logTime: "", 
       energyLevel: "unchanged",
       mood: "",
       digestiveSymptoms: "",
@@ -61,12 +64,11 @@ export function SymptomLogForm() {
     },
   });
 
-  // Update form default when defaultLogTime is ready
   useEffect(() => {
-    if (defaultLogTime && !form.getValues("logTime")) {
+    if (isClient && defaultLogTime && !form.getValues("logTime")) {
       form.reset({ ...form.getValues(), logTime: defaultLogTime });
     }
-  }, [defaultLogTime, form]);
+  }, [isClient, defaultLogTime, form]);
 
 
   const handleSubmit = async (values: SymptomLogFormValues) => {
@@ -79,7 +81,7 @@ export function SymptomLogForm() {
     });
     form.reset({
       mealName: "",
-      logTime: defaultLogTime, // Reset to current time after submission
+      logTime: defaultLogTime, 
       energyLevel: "unchanged",
       mood: "",
       digestiveSymptoms: "",
@@ -89,15 +91,25 @@ export function SymptomLogForm() {
     setIsSubmitting(false);
   };
 
-  if (!defaultLogTime) {
-    // Render a loading state or null until defaultLogTime is set
+  if (!isClient) {
+    // Render a basic skeleton on SSR to avoid hydration mismatch with datetime-local
     return (
-      <div className="space-y-6">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="space-y-2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        ))}
+        <div className="space-y-6">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-10 w-1/3" />
+        </div>
+    );
+  }
+
+  // If client-side, but defaultLogTime is not ready (should be very quick)
+  if (!defaultLogTime) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Initializing form...</span>
       </div>
     );
   }
@@ -221,3 +233,4 @@ export function SymptomLogForm() {
     </Form>
   );
 }
+
