@@ -41,14 +41,13 @@ export async function nutritionChatbot(input: NutritionChatbotInput): Promise<Nu
 
 // Construct the prompt string with history
 function buildChatPrompt(input: NutritionChatbotInput): string {
-  let fullPrompt = `You are NutriCoach AI, a friendly and knowledgeable virtual nutrition assistant. Your goal is to help users with their nutrition questions, guide them through the app, provide encouragement, and offer helpful tips.
+  let fullPrompt = `You are NutriCoach AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant. Your primary goal is to provide comprehensive support to users of the NutriCoach AI app. This includes:
 
-You should be:
-- Empathetic and supportive.
-- Knowledgeable about general nutrition, healthy eating, and common dietary concerns.
-- Able to provide brief, clear, and actionable advice.
-- Encouraging and motivating.
-- Aware that you are part of the "NutriCoach AI" app.
+- Answering nutrition-related questions with evidence-based information.
+- Guiding users on how to effectively use all features of the NutriCoach AI app (e.g., Dietary Analysis, Meal Plan Generator, Recipe Alternatives, Challenges, Community Hub, Progress Tracking, Educational Resources).
+- Assisting with common app usage queries or clarifying feature functionalities. If a query is too technical or requires administrative access, politely state your limitations and suggest checking a FAQ if available or contacting support (if such a channel exists).
+- Providing daily encouragement, motivation, and actionable tips to help them achieve their health goals.
+- If a user asks about topics beyond your scope (e.g., complex medical conditions, specific medical diagnoses) or requests direct medical advice, gently guide them to consult a qualified healthcare professional or a registered dietitian. You can also inform them that "NutriCoach AI plans to offer premium support options in the future, which may include access to expert consultations."
 
 Current User Profile (if available):
 ${input.userProfile?.healthGoals ? `- Health Goals: ${input.userProfile.healthGoals}` : ''}
@@ -74,9 +73,7 @@ const prompt = ai.definePrompt({
   output: {schema: NutritionChatbotOutputSchema},
   prompt: buildChatPrompt, // Use the dynamic prompt builder
   config: {
-    // Higher temperature for more creative/varied chat responses
     temperature: 0.7,
-    // Safety settings can be adjusted if needed
     safetySettings: [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -94,27 +91,25 @@ const nutritionChatbotFlow = ai.defineFlow(
     outputSchema: NutritionChatbotOutputSchema,
   },
   async (input) => {
-    // Here, we directly use the prompt definition which now internally handles the history.
-    // The `prompt` function itself will call `buildChatPrompt` with the input.
     const llmResponse = await prompt(input);
     const output = llmResponse.output();
 
     if (!output) {
-      // Fallback or error handling if the LLM doesn't return structured output as expected
       return { reply: "I'm having a little trouble understanding that. Could you try rephrasing?" };
     }
     
-    // Potentially add logic here to generate suggestions based on the reply or user query.
-    // For now, we'll keep it simple.
-    // Example: if reply mentions hydration, suggest "Log your water intake?"
     let generatedSuggestions: string[] = [];
     if (output.reply.toLowerCase().includes("water") || output.reply.toLowerCase().includes("hydrate")) {
         generatedSuggestions.push("Track my water intake today?");
     }
-    if (output.reply.toLowerCase().includes("meal") || output.reply.toLowerCase().includes("recipe")) {
+    if (output.reply.toLowerCase().includes("meal plan") || output.reply.toLowerCase().includes("recipe")) {
         generatedSuggestions.push("Generate a new meal idea?");
     }
-     if (generatedSuggestions.length === 0 && Math.random() > 0.5) { // Randomly add a generic suggestion
+     if (output.reply.toLowerCase().includes("feature") || output.reply.toLowerCase().includes("how to")) {
+        generatedSuggestions.push("Tell me more about Dietary Analysis.");
+        generatedSuggestions.push("How do I create a family meal plan?");
+    }
+     if (generatedSuggestions.length === 0 && Math.random() > 0.5) { 
         generatedSuggestions.push("What are common protein sources?");
     }
 

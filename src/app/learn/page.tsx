@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Youtube, Lightbulb, CookingPot } from "lucide-react";
+import { BookOpen, Youtube, Lightbulb, CookingPot, HelpingHand } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -41,19 +41,28 @@ export default function LearnPage() {
       image: "https://picsum.photos/seed/learn4/400/200",
       aiHint: "quick dinner",
     },
+    {
+      type: "Premium Support",
+      title: "Expert Nutritionist Consultations",
+      description: "Connect with registered dietitians for personalized one-on-one guidance and advanced support. (Coming Soon)",
+      icon: HelpingHand,
+      link: "#",
+      image: "https://picsum.photos/seed/learnsupport/400/200",
+      aiHint: "nutritionist consultation",
+    },
   ];
 
   return (
     <div className="container mx-auto py-8">
       <header className="mb-12 text-center">
         <BookOpen className="mx-auto h-16 w-16 text-accent mb-4" />
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">Knowledge Hub</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Knowledge & Support Hub</h1>
         <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-          Expand your nutrition knowledge with our curated articles, videos, guides, and recipes. Empower yourself to make informed choices for a healthier life.
+          Expand your nutrition knowledge and find support. Explore articles, videos, guides, recipes, and future premium consultation options.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {resources.map((resource, index) => (
           <Card key={index} className="shadow-xl overflow-hidden flex flex-col">
             <div className="relative h-48 w-full">
@@ -80,7 +89,7 @@ export default function LearnPage() {
             <CardContent className="mt-auto">
               <Link href={resource.link} passHref>
                 <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-md transition-colors disabled:opacity-50" disabled>
-                  Read More (Coming Soon)
+                  {resource.type === "Premium Support" ? "Learn More (Coming Soon)" : "Read More (Coming Soon)"}
                 </button>
               </Link>
             </CardContent>
@@ -88,7 +97,7 @@ export default function LearnPage() {
         ))}
       </div>
       <p className="text-center mt-12 text-sm text-muted-foreground">
-        We're constantly adding new educational content. Check back soon for more!
+        We're constantly adding new educational content and support features. Check back soon for more!
       </p>
     </div>
   );
