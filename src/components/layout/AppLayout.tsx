@@ -18,6 +18,7 @@ import { TopAppBar } from "./TopAppBar";
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggleButton } from "./ThemeToggleButton"; // Import ThemeToggleButton
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -35,17 +36,17 @@ export function AppLayout({ children }: AppLayoutProps) {
     // Fallback for SSR to avoid hydration mismatch and layout shifts.
     // Render a simple skeleton or a non-responsive version of the layout.
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
         <header className="h-14 border-b flex items-center px-6">
           <Leaf className="h-8 w-8 text-primary mr-2" />
-          <h1 className="text-xl font-semibold text-foreground">NutriCoach AI</h1>
+          <h1 className="text-xl font-semibold">NutriCoach AI</h1>
         </header>
         <div className="flex flex-1">
-          <aside className="w-64 border-r p-4 hidden md:block">
-            <Skeleton className="h-8 w-3/4 mb-4" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
+          <aside className="w-64 border-r p-4 hidden md:block bg-sidebar text-sidebar-foreground">
+            <Skeleton className="h-8 w-3/4 mb-4 bg-muted" />
+            <Skeleton className="h-6 w-full mb-2 bg-muted" />
+            <Skeleton className="h-6 w-full mb-2 bg-muted" />
+            <Skeleton className="h-6 w-full mb-2 bg-muted" />
           </aside>
           <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
         </div>
@@ -78,15 +79,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         <SidebarContent>
           <SidebarNav />
         </SidebarContent>
-        <SidebarFooter className="p-4 text-xs text-muted-foreground border-t border-sidebar-border">
-          &copy; {new Date().getFullYear()} NutriCoach AI
+        <SidebarFooter className="p-4 text-xs text-muted-foreground border-t border-sidebar-border flex justify-between items-center">
+          <span>&copy; {new Date().getFullYear()} NutriCoach AI</span>
+          <ThemeToggleButton /> {/* Added ThemeToggleButton to SidebarFooter for Desktop */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-6 backdrop-blur-md">
-          {/* Desktop header content can go here, e.g., UserMenu, Search */}
           <div>{/* Placeholder for future content like breadcrumbs or page title */}</div>
-          <div>{/* Placeholder for User Profile / Settings */}</div>
+          <div className="flex items-center gap-2">
+            {/* Placeholder for User Profile / Settings */}
+            {/* <ThemeToggleButton /> This could be another place for desktop toggle */}
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background">
           {children}

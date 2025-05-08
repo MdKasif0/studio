@@ -3,10 +3,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, Replace, Award, Users, BookOpen } from "lucide-react";
+import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, Replace, Award, Users, BookOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import React from "react";
+import { ThemeToggleButton } from "./ThemeToggleButton"; // Import ThemeToggleButton
+import { Separator } from "../ui/separator";
 
 const mainNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -68,7 +70,7 @@ export function BottomNavigationBar() {
                 <span className="sr-only">Close</span>
               </SheetClose>
             </SheetHeader>
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
               <ul className="space-y-1">
                 {moreNavItems.map((navItem) => (
                   <li key={navItem.label}>
@@ -88,6 +90,14 @@ export function BottomNavigationBar() {
                   </li>
                 ))}
               </ul>
+              <Separator />
+              <div className="flex items-center justify-between p-3 rounded-md hover:bg-muted">
+                <div className="flex items-center gap-3 text-base text-foreground">
+                  <Settings className="h-5 w-5" />
+                  <span>Theme</span>
+                </div>
+                <ThemeToggleButton />
+              </div>
             </div>
           </SheetContent>
         </Sheet>

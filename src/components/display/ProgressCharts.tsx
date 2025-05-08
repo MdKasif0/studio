@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
-import { Bar, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, Pie, Cell, Bar as RechartsBar } from "recharts"; // ShadCN chart uses recharts
+import { Pie, Cell, Bar as RechartsBar, ResponsiveContainer, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, PieChart as RechartsPieChart } from "recharts";
 import React from "react";
 
 
@@ -25,22 +26,21 @@ const calorieData = [
 ];
 
 const macroData = [
-  { name: "Protein", value: 30, fill: "hsl(var(--chart-1))" }, // Green
-  { name: "Carbs", value: 45, fill: "hsl(var(--chart-2))" },   // Orange
-  { name: "Fats", value: 25, fill: "hsl(var(--chart-4))" },    // Medium Green
+  { name: "Protein", value: 30, fillKey: "chart-1" },
+  { name: "Carbs", value: 45, fillKey: "chart-2" },
+  { name: "Fats", value: 25, fillKey: "chart-4" },
 ];
 
 const chartConfig = {
-  planned: { label: "Planned Calories", color: "hsl(var(--chart-5))" }, // Darker Orange
-  actual: { label: "Actual Calories", color: "hsl(var(--chart-1))" },   // Light Green
-  protein: { label: "Protein", color: "hsl(var(--chart-1))" },
-  carbs: { label: "Carbs", color: "hsl(var(--chart-2))" },
-  fats: { label: "Fats", color: "hsl(var(--chart-4))" },
+  planned: { label: "Planned Calories", color: "hsl(var(--chart-5))" },
+  actual: { label: "Actual Calories", color: "hsl(var(--chart-1))" },
+  "chart-1": { label: "Protein", color: "hsl(var(--chart-1))" }, // For Pie chart
+  "chart-2": { label: "Carbs", color: "hsl(var(--chart-2))" },   // For Pie chart
+  "chart-4": { label: "Fats", color: "hsl(var(--chart-4))" },    // For Pie chart
 } satisfies import("@/components/ui/chart").ChartConfig;
 
 
 export function ProgressCharts() {
-  // useEffect to avoid hydration errors with client-side charts
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -92,15 +92,20 @@ export function ProgressCharts() {
         <CardContent className="flex justify-center">
           <ChartContainer config={chartConfig} className="h-64 w-full max-w-xs">
             <ResponsiveContainer width="100%" height="100%">
-              <RechartsPrimitive.PieChart>
-                <RechartsTooltip content={<ChartTooltipContent hideLabel nameKey="name"/>} />
+              <RechartsPieChart>
+                <RechartsTooltip 
+                  content={<ChartTooltipContent hideLabel nameKey="name" />}
+                />
                 <Pie data={macroData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                   {macroData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                    <Cell key={`cell-${index}`} fill={`hsl(var(--${entry.fillKey}))`} />
                   ))}
                 </Pie>
-                <RechartsLegend content={<ChartLegendContent nameKey="name" />} />
-              </RechartsPrimitive.PieChart>
+                <RechartsLegend 
+                    content={<ChartLegendContent nameKey="name" />} 
+                    payload={macroData.map(entry => ({ value: entry.name, type: 'square', color: `hsl(var(--${entry.fillKey}))` }))}
+                />
+              </RechartsPieChart>
             </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
@@ -110,6 +115,4 @@ export function ProgressCharts() {
   );
 }
 
-// Recharts Primitive needed for Pie chart to work with ShadCN Chart components
-const RechartsPrimitive = { PieChart: ({children, ...props}: any) => <div {...props}>{children}</div> };
-RechartsPrimitive.PieChart = Recharts.PieChart;
+// Removed RechartsPrimitive as direct import from 'recharts' is now used for PieChart.

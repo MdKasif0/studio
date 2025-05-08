@@ -221,7 +221,7 @@ const SidebarTrigger = React.forwardRef< // This trigger can be used for desktop
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-8 w-8", className)} // Adjusted size
+      className={cn("h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", className)} // Adjusted size and colors
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -429,7 +429,7 @@ const SidebarMenuButton = React.forwardRef<
       </Comp>
     )
 
-    if (!tooltip || state === "expanded") { // Show tooltip only when collapsed and not on mobile
+    if (!tooltip || state === "expanded" || isMobile) { // Show tooltip only when collapsed and not on mobile
       return buttonContent;
     }
     
@@ -445,7 +445,10 @@ const SidebarMenuButton = React.forwardRef<
           side="right"
           align="center"
           sideOffset={6}
-          className="ml-1 bg-sidebar-foreground text-sidebar-background text-xs px-2 py-1 rounded"
+          className={cn(
+            "ml-1 bg-sidebar text-sidebar-foreground border-sidebar-border text-xs px-2 py-1 rounded", // Use sidebar theme vars
+            tooltip.className // Allow overriding className from props
+          )}
           {...tooltip}
         />
       </Tooltip>
