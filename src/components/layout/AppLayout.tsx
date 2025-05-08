@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation"; // Import usePathname
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   SidebarProvider,
@@ -18,13 +19,14 @@ import { TopAppBar } from "./TopAppBar";
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ThemeToggleButton } from "./ThemeToggleButton"; // Import ThemeToggleButton
+import { ThemeToggleButton } from "./ThemeToggleButton";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const pathname = usePathname(); // Get current pathname
   const isMobile = useIsMobile();
   const [isClient, setIsClient] = useState(false);
 
@@ -32,9 +34,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     setIsClient(true);
   }, []);
 
+  // If it's an auth page, render children directly without main app layout
+  if (pathname.startsWith("/sign-in")) { // Or any other auth routes like /sign-up, /forgot-password
+    return <>{children}</>;
+  }
+
+
   if (!isClient) {
-    // Fallback for SSR to avoid hydration mismatch and layout shifts.
-    // Render a simple skeleton or a non-responsive version of the layout.
     return (
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         <header className="h-14 border-b flex items-center px-6">
@@ -53,12 +59,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
     );
   }
+  
 
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen bg-background text-foreground">
         <TopAppBar />
-        <main className="flex-1 overflow-y-auto p-4 pb-20"> {/* Increased pb for bottom nav + safe area */}
+        <main className="flex-1 overflow-y-auto p-4 pb-20">
           {children}
         </main>
         <BottomNavigationBar />
@@ -68,7 +75,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Desktop Layout
   return (
-    <SidebarProvider defaultOpen> {/* Desktop sidebar open by default */}
+    <SidebarProvider defaultOpen>
       <Sidebar className="border-r border-sidebar-border">
         <SidebarHeader className="p-2">
           <Link href="/" className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity">
@@ -81,15 +88,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         </SidebarContent>
         <SidebarFooter className="p-4 text-xs text-muted-foreground border-t border-sidebar-border flex justify-between items-center">
           <span>&copy; {new Date().getFullYear()} NutriCoach AI</span>
-          <ThemeToggleButton /> {/* Added ThemeToggleButton to SidebarFooter for Desktop */}
+          <ThemeToggleButton />
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-6 backdrop-blur-md">
-          <div>{/* Placeholder for future content like breadcrumbs or page title */}</div>
+          <div></div>
           <div className="flex items-center gap-2">
-            {/* Placeholder for User Profile / Settings */}
-            {/* <ThemeToggleButton /> This could be another place for desktop toggle */}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background">
