@@ -58,14 +58,9 @@ export default function SignInPage() {
         
         toast({
           title: "Sign Up Successful!",
-          description: data.message + " Redirecting to login...",
+          description: "Welcome! You are now logged in.",
         });
-        // For this setup, redirect to login after sign up.
-        // Or, directly log them in and redirect to '/'
-        // For simplicity, let's redirect to login to use the login flow
-        setTimeout(() => router.push('/sign-in?tab=login'), 2000); 
-        // A better UX might auto-login and push to '/'
-        // router.push('/');
+        router.push('/'); // Redirect to dashboard/homepage after successful sign up
       } else {
         toast({
           variant: "destructive",
@@ -132,3 +127,4 @@ export default function SignInPage() {
     </div>
   );
 }
+
