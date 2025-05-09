@@ -27,6 +27,7 @@ const NutritionChatbotInputSchema = z.object({
       preferences: z.string().optional(),
       healthGoals: z.string().optional(),
   }).optional().describe('Basic user profile information to personalize responses.'),
+  apiKey: z.string().optional().describe('Optional user-provided Google AI API key.'),
 });
 export type NutritionChatbotInput = z.infer<typeof NutritionChatbotInputSchema>;
 
@@ -41,7 +42,7 @@ export async function nutritionChatbot(input: NutritionChatbotInput): Promise<Nu
 }
 
 // Construct the prompt string with history
-function buildChatPrompt(input: NutritionChatbotInput): string {
+function buildChatPrompt(input: Omit<NutritionChatbotInput, 'apiKey'>): string { // apiKey is not used in prompt string directly
   let fullPrompt = `You are Nutri AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant. Your primary goal is to provide comprehensive support to users of the Nutri AI app. This includes:
 
 - Answering nutrition-related questions with evidence-based information.
@@ -70,10 +71,10 @@ Conversation History:
 
 const prompt = ai.definePrompt({
   name: 'nutritionChatbotPrompt',
-  input: {schema: NutritionChatbotInputSchema},
+  input: {schema: NutritionChatbotInputSchema.omit({ apiKey: true }) }, // apiKey is handled by the flow
   output: {schema: NutritionChatbotOutputSchema},
-  prompt: buildChatPrompt, // Use the dynamic prompt builder
-  config: {
+  prompt: buildChatPrompt, 
+  config: { // Default config, can be overridden by flow
     temperature: 0.7,
     safetySettings: [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -92,8 +93,11 @@ const nutritionChatbotFlow = ai.defineFlow(
     outputSchema: NutritionChatbotOutputSchema,
   },
   async (input) => {
-    const llmResponse = await prompt(input);
-    const output = llmResponse.output; // Corrected from llmResponse.output()
+    const { apiKey, ...promptInput } = input;
+    const options = apiKey ? { config: { apiKey } } : undefined;
+    
+    const llmResponse = await prompt(promptInput, options);
+    const output = llmResponse.output;
 
     if (!output) {
       return { reply: "I'm having a little trouble understanding that. Could you try rephrasing?" };
@@ -114,11 +118,9 @@ const nutritionChatbotFlow = ai.defineFlow(
         generatedSuggestions.push("What are common protein sources?");
     }
 
-
     return {
       reply: output.reply,
       suggestions: output.suggestions || generatedSuggestions.length > 0 ? generatedSuggestions : undefined,
     };
   }
 );
-

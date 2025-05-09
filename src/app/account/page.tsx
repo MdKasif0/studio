@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut } from "lucide-react";
+import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut, KeySquare } from "lucide-react";
 import { AccountForm } from "@/components/account/AccountForm";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import type { AccountSettingsFormData, ChangePasswordFormData } from "@/lib/schemas/authSchemas";
@@ -27,8 +27,19 @@ import {
 import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser } from '@/lib/authLocalStorage';
+import { 
+  getAuthUser, 
+  saveUserDetails, 
+  getUserDetails, 
+  clearUserSession, 
+  type StoredUserDetails, 
+  type AuthUser,
+  saveApiKey,
+  getApiKey,
+  removeApiKey
+} from '@/lib/authLocalStorage';
 import { useRouter } from 'next/navigation';
+import { Label } from '@/components/ui/label';
 
 
 export default function AccountPage() {
@@ -43,6 +54,15 @@ export default function AccountPage() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
+  const [userApiKeyInput, setUserApiKeyInput] = useState("");
+  const [currentApiKeyDisplay, setCurrentApiKeyDisplay] = useState<string | null>(null);
+
+  const maskApiKey = (key: string | null): string | null => {
+    if (!key) return null;
+    if (key.length <= 8) return "********";
+    return `${key.substring(0, 4)}...${key.slice(-4)}`;
+  };
+
   const loadDataFromLocalStorage = useCallback(() => {
     const currentAuthUser = getAuthUser();
     setAuthUser(currentAuthUser);
@@ -51,13 +71,15 @@ export default function AccountPage() {
       if (storedDetails) {
         setUserDetails(storedDetails);
       } else {
-        // Initialize with defaults if no details found, using authUser for username/email
         setUserDetails({
-          primaryHealthGoal: "Improve Overall Health", // Default or fetch from a default profile
-          dietaryRestrictions: { /* defaults */ },
+          primaryHealthGoal: "Improve Overall Health",
+          dietaryRestrictions: {},
           profilePictureDataUrl: "https://picsum.photos/seed/profile/200/200"
         });
       }
+      const storedApiKey = getApiKey(currentAuthUser.id);
+      setCurrentApiKeyDisplay(maskApiKey(storedApiKey));
+      if (storedApiKey) setUserApiKeyInput(storedApiKey); // Pre-fill input if key exists
     }
     setIsLoadingData(false);
   }, []);
@@ -83,43 +105,27 @@ export default function AccountPage() {
 
 
   const profileUpdateMutation = useMutation({
-    mutationFn: handleAccountUpdate, // This is a server action
+    mutationFn: handleAccountUpdate,
     onSuccess: (response, submittedData) => {
       if (response.success && authUser) {
-        // Update AuthUser if username/email changed (though typically email is fixed or special flow)
-        // For this example, username from submittedData updates authUser
-        const updatedAuthUser = { ...authUser, username: submittedData.username, email: submittedData.email };
-        // saveAuthUser(updatedAuthUser); // Be careful with email changes, usually needs verification.
-        // For now, let's assume email is not changed or handled by a separate flow.
-        // We'll update username in AuthUser for consistency if it changes.
         if (authUser.username !== submittedData.username) {
             saveAuthUser({...authUser, username: submittedData.username });
             setAuthUser(prev => prev ? {...prev, username: submittedData.username} : null);
         }
-
-
         const newDetails: StoredUserDetails = {
           primaryHealthGoal: submittedData.primaryHealthGoal,
           dietaryRestrictions: submittedData.dietaryRestrictions,
-          profilePictureDataUrl: userDetails?.profilePictureDataUrl, // Keep existing pic
+          profilePictureDataUrl: userDetails?.profilePictureDataUrl, 
         };
         saveUserDetails(authUser.id, newDetails);
         setUserDetails(newDetails);
-        
-        toast({
-          title: "Profile Updated",
-          description: response.message,
-        });
+        toast({ title: "Profile Updated", description: response.message });
       } else {
          toast({ variant: "destructive", title: "Update Failed", description: response.message });
       }
     },
     onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Update Error",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Update Error", description: error.message });
     },
   });
 
@@ -131,21 +137,15 @@ export default function AccountPage() {
         description: response.message,
         variant: response.success ? "default" : "destructive",
       });
-      if (response.success) {
-        setIsPasswordDialogOpen(false); 
-      }
+      if (response.success) setIsPasswordDialogOpen(false); 
     },
     onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Password Change Error",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Password Change Error", description: error.message });
     },
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: handleDeleteAccountAction, // Needs userId, but mock action doesn't use it yet
+    mutationFn: handleDeleteAccountAction,
     onSuccess: (response) => {
       toast({
         title: response.success ? "Account Deletion Initiated" : "Deletion Failed",
@@ -158,26 +158,13 @@ export default function AccountPage() {
       }
     },
     onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Deletion Error",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Deletion Error", description: error.message });
     },
   });
 
-  const onProfileSubmit = (data: AccountSettingsFormData) => {
-    profileUpdateMutation.mutate(data);
-  };
-
-  const onChangePasswordSubmit = (data: ChangePasswordFormData) => {
-    passwordChangeMutation.mutate(data);
-  };
-
-  const onDeleteAccountConfirm = () => {
-    deleteAccountMutation.mutate();
-  };
-
+  const onProfileSubmit = (data: AccountSettingsFormData) => profileUpdateMutation.mutate(data);
+  const onChangePasswordSubmit = (data: ChangePasswordFormData) => passwordChangeMutation.mutate(data);
+  const onDeleteAccountConfirm = () => deleteAccountMutation.mutate();
 
   const handleProfilePicChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -186,27 +173,40 @@ export default function AccountPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const newProfilePicDataUrl = reader.result as string;
-        // Simulate upload delay if desired, then save to local storage
         setTimeout(() => {
           const updatedDetails: StoredUserDetails = {
-            ...(userDetails || { primaryHealthGoal: "Improve Overall Health", dietaryRestrictions: {} }), // Ensure userDetails is not null
+            ...(userDetails || { primaryHealthGoal: "Improve Overall Health", dietaryRestrictions: {} }),
             profilePictureDataUrl: newProfilePicDataUrl,
           };
           saveUserDetails(authUser.id, updatedDetails);
           setUserDetails(updatedDetails);
           setIsUploading(false);
-          toast({
-            title: "Profile Picture Updated",
-            description: "Your new profile picture has been set.",
-          });
-        }, 1000); // Simulate upload
+          toast({ title: "Profile Picture Updated", description: "Your new profile picture has been set." });
+        }, 1000);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
+  const triggerFileSelect = () => fileInputRef.current?.click();
+
+  const handleSaveApiKey = () => {
+    if (authUser && userApiKeyInput.trim()) {
+      saveApiKey(authUser.id, userApiKeyInput.trim());
+      setCurrentApiKeyDisplay(maskApiKey(userApiKeyInput.trim()));
+      toast({ title: "API Key Saved", description: "Your Gemini API key has been saved locally." });
+    } else if (!userApiKeyInput.trim()) {
+      toast({ variant: "destructive", title: "API Key Empty", description: "Please enter an API key to save." });
+    }
+  };
+
+  const handleClearApiKey = () => {
+    if (authUser) {
+      removeApiKey(authUser.id);
+      setUserApiKeyInput("");
+      setCurrentApiKeyDisplay(null);
+      toast({ title: "API Key Cleared", description: "Your Gemini API key has been removed from local storage." });
+    }
   };
 
   if (isLoadingData || !authUser || !combinedUserDataForForm) {
@@ -284,6 +284,43 @@ export default function AccountPage() {
             initialData={combinedUserDataForForm} 
             isPending={profileUpdateMutation.isPending} 
           />
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-xl md:text-2xl flex items-center">
+            <KeySquare className="mr-2 h-6 w-6 text-primary" /> API Key Management
+          </CardTitle>
+          <CardDescription>Provide your own Google AI (Gemini) API key to use with Nutri AI features. This can help avoid rate limits on shared keys.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="gemini-api-key">Your Gemini API Key</Label>
+            <Input 
+              id="gemini-api-key" 
+              type="password" // Use password type to mask input by default
+              value={userApiKeyInput}
+              onChange={(e) => setUserApiKeyInput(e.target.value)}
+              placeholder="Enter your Gemini API Key" 
+              className="mt-1"
+            />
+            {currentApiKeyDisplay && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Current key: {currentApiKeyDisplay} (Stored locally in your browser)
+              </p>
+            )}
+          </div>
+          <div className="flex space-x-2">
+            <Button onClick={handleSaveApiKey} className="bg-accent hover:bg-accent/90 text-accent-foreground">Save API Key</Button>
+            {currentApiKeyDisplay && (
+              <Button variant="outline" onClick={handleClearApiKey}>Clear API Key</Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your API key is stored locally in your browser and is only used for making requests to the Gemini API through this app. 
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 ml-1">Get a Gemini API key here.</a>
+          </p>
         </CardContent>
       </Card>
 

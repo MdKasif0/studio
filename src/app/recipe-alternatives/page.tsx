@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { RecipeAlternativesForm } from "@/components/forms/RecipeAlternativesForm";
 import { RecipeSuggestionDisplay } from "@/components/display/RecipeSuggestionDisplay";
@@ -14,18 +14,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, Lightbulb } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// import type { Metadata } from "next"; // Not used directly in client component
-
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Recipe Alternatives & Ingredient Swaps | Nutri AI",
-//   description: "Find suitable ingredient substitutions or alternative recipes that fit your dietary restrictions and preferences with Nutri AI's smart suggester.",
-// };
+import { getAuthUser, getApiKey } from "@/lib/authLocalStorage";
+import type { AuthUser } from "@/lib/authLocalStorage";
 
 export default function RecipeAlternativesPage() {
   const { toast } = useToast();
   const [suggestionResult, setSuggestionResult] = useState<SuggestRecipeAlternativesOutput | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-  const mutation = useMutation({
+  useEffect(() => {
+    setAuthUser(getAuthUser());
+  }, []);
+
+  const mutation = useMutation<SuggestRecipeAlternativesOutput, Error, SuggestRecipeAlternativesInput>({
     mutationFn: (data: SuggestRecipeAlternativesInput) => handleRecipeSuggestion(data),
     onSuccess: (data) => {
       setSuggestionResult(data);
@@ -44,12 +45,17 @@ export default function RecipeAlternativesPage() {
     },
   });
 
-  const handleSubmit = async (data: SuggestRecipeAlternativesInput) => {
-    mutation.mutate(data);
+  const handleSubmit = async (formData: Omit<SuggestRecipeAlternativesInput, 'apiKey'>) => {
+    const userApiKey = authUser ? getApiKey(authUser.id) : null;
+    const submissionData: SuggestRecipeAlternativesInput = {
+      ...formData,
+      ...(userApiKey && { apiKey: userApiKey }),
+    };
+    mutation.mutate(submissionData);
   };
 
   return (
-    <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8"> {/* Adjusted padding and width */}
+    <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8">
       <Card className="shadow-xl">
         <CardHeader className="px-4 pt-4 md:px-6 md:pt-6">
           <div className="flex items-center gap-2 md:gap-3 mb-2">

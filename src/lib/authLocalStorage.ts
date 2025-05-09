@@ -3,10 +3,14 @@
 'use client'; // Local storage is a client-side API
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
+import type { HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
 const USER_DETAILS_PREFIX = "nutriAIUserDetails_";
 const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
+const API_KEY_PREFIX = "nutriAIUserApiKey_";
+const HOME_DASHBOARD_CACHE_PREFIX = "nutriAIHomeDashboard_";
+
 
 export interface AuthUser {
   id: string;
@@ -24,6 +28,11 @@ export interface ChatMessage {
   role: "user" | "model";
   content: string;
   suggestions?: string[];
+}
+
+export interface HomeDashboardCache {
+  timestamp: number;
+  data: HomeDashboardOutput;
 }
 
 // --- Auth User ---
@@ -90,11 +99,59 @@ export function removeChatHistory(userId: string): void {
     }
 }
 
+// --- User API Key ---
+export function saveApiKey(userId: string, apiKey: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${API_KEY_PREFIX}${userId}`, apiKey);
+  }
+}
+
+export function getApiKey(userId: string): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(`${API_KEY_PREFIX}${userId}`);
+  }
+  return null;
+}
+
+export function removeApiKey(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${API_KEY_PREFIX}${userId}`);
+  }
+}
+
+// --- Home Dashboard Cache ---
+export function saveHomeDashboardData(userId: string, data: HomeDashboardOutput): void {
+  if (typeof window !== 'undefined') {
+    const cacheEntry: HomeDashboardCache = {
+      timestamp: new Date().getTime(),
+      data: data,
+    };
+    localStorage.setItem(`${HOME_DASHBOARD_CACHE_PREFIX}${userId}`, JSON.stringify(cacheEntry));
+  }
+}
+
+export function getHomeDashboardData(userId: string): HomeDashboardCache | null {
+  if (typeof window !== 'undefined') {
+    const cacheStr = localStorage.getItem(`${HOME_DASHBOARD_CACHE_PREFIX}${userId}`);
+    return cacheStr ? JSON.parse(cacheStr) : null;
+  }
+  return null;
+}
+
+export function removeHomeDashboardData(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${HOME_DASHBOARD_CACHE_PREFIX}${userId}`);
+  }
+}
+
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
     removeAuthUser();
     if (userId) {
         removeUserDetails(userId);
         removeChatHistory(userId);
+        removeApiKey(userId);
+        removeHomeDashboardData(userId);
     }
 }
+

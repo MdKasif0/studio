@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -15,6 +16,7 @@ const SuggestRecipeAlternativesInputSchema = z.object({
   recipeName: z.string().describe('The name of the recipe.'),
   ingredients: z.string().describe('The ingredients of the recipe.'),
   dietaryRestrictions: z.string().describe('The dietary restrictions of the user.'),
+  apiKey: z.string().optional().describe('Optional user-provided Google AI API key.'),
 });
 export type SuggestRecipeAlternativesInput = z.infer<typeof SuggestRecipeAlternativesInputSchema>;
 
@@ -33,7 +35,7 @@ export async function suggestRecipeAlternatives(
 
 const prompt = ai.definePrompt({
   name: 'suggestRecipeAlternativesPrompt',
-  input: {schema: SuggestRecipeAlternativesInputSchema},
+  input: {schema: SuggestRecipeAlternativesInputSchema.omit({ apiKey: true })},
   output: {schema: SuggestRecipeAlternativesOutputSchema},
   prompt: `You are a personal AI recipe assistant. A user will give you a recipe name, ingredients, and dietary restrictions. You will suggest alternative ingredients or recipes that align with their needs.
 
@@ -50,8 +52,10 @@ const suggestRecipeAlternativesFlow = ai.defineFlow(
     inputSchema: SuggestRecipeAlternativesInputSchema,
     outputSchema: SuggestRecipeAlternativesOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { apiKey, ...promptInput } = input;
+    const options = apiKey ? { config: { apiKey } } : undefined;
+    const { output } = await prompt(promptInput, options);
     return output!;
   }
 );

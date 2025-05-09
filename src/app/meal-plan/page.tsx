@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { MealPlanForm } from "@/components/forms/MealPlanForm";
 import { MealPlanDisplay } from "@/components/display/MealPlanDisplay";
@@ -14,19 +14,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, CalendarDays } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// import type { Metadata } from "next"; // Not used directly in client component
-
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Custom Meal Plan Generator | Nutri AI",
-//   description: "Generate custom meal plans tailored to your calorie goals, dietary needs, cooking time, and family preferences with Nutri AI.",
-// };
-
+import { getAuthUser, getApiKey } from "@/lib/authLocalStorage";
+import type { AuthUser } from "@/lib/authLocalStorage";
 
 export default function MealPlanPage() {
   const { toast } = useToast();
   const [mealPlanResult, setMealPlanResult] = useState<GenerateCustomMealPlanOutput | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-  const mutation = useMutation({
+  useEffect(() => {
+    setAuthUser(getAuthUser());
+  }, []);
+
+  const mutation = useMutation<GenerateCustomMealPlanOutput, Error, GenerateCustomMealPlanInput>({
     mutationFn: (data: GenerateCustomMealPlanInput) => handleMealPlanGeneration(data),
     onSuccess: (data) => {
       setMealPlanResult(data);
@@ -45,12 +45,17 @@ export default function MealPlanPage() {
     },
   });
 
-  const handleSubmit = async (data: GenerateCustomMealPlanInput) => {
-    mutation.mutate(data);
+  const handleSubmit = async (formData: Omit<GenerateCustomMealPlanInput, 'apiKey'>) => {
+    const userApiKey = authUser ? getApiKey(authUser.id) : null;
+    const submissionData: GenerateCustomMealPlanInput = {
+      ...formData,
+      ...(userApiKey && { apiKey: userApiKey }),
+    };
+    mutation.mutate(submissionData);
   };
 
   return (
-    <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8"> {/* Adjusted padding and width */}
+    <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8">
       <Card className="shadow-xl">
         <CardHeader className="px-4 pt-4 md:px-6 md:pt-6">
           <div className="flex items-center gap-2 md:gap-3 mb-2">

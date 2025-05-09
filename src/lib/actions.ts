@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -22,16 +23,15 @@ import {
 } from "@/ai/flows/nutrition-chatbot-flow";
 import type { AccountSettingsFormData, ChangePasswordFormData, LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
+import { homeDashboardFlow, type HomeDashboardInput, type HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 
 
 export async function handleDietaryAnalysis(
-  data: AnalyzeDietaryHabitsInput
+  data: AnalyzeDietaryHabitsInput // This now includes optional apiKey
 ): Promise<AnalyzeDietaryHabitsOutput> {
-  console.log("Server Action: handleDietaryAnalysis called with", data);
+  console.log("Server Action: handleDietaryAnalysis called with habits:", data.dietaryHabits, "API Key provided:", !!data.apiKey);
   try {
-    // Simulate a short delay for network
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // Example of how to trigger a simulated error for testing
     if (data.dietaryHabits.toLowerCase().includes("trigger error")) {
       throw new Error("Simulated AI error during dietary analysis.");
     }
@@ -45,11 +45,11 @@ export async function handleDietaryAnalysis(
 }
 
 export async function handleMealPlanGeneration(
-  data: GenerateCustomMealPlanInput
+  data: GenerateCustomMealPlanInput // This now includes optional apiKey
 ): Promise<GenerateCustomMealPlanOutput> {
-  console.log("Server Action: handleMealPlanGeneration called with", data);
+  console.log("Server Action: handleMealPlanGeneration called with calorie intake:", data.calorieIntake, "API Key provided:", !!data.apiKey);
   try {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate longer delay
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
      if (data.calorieIntake === 0) {
       throw new Error("Simulated AI error: Calorie intake cannot be zero.");
     }
@@ -63,9 +63,9 @@ export async function handleMealPlanGeneration(
 }
 
 export async function handleRecipeSuggestion(
-  data: SuggestRecipeAlternativesInput
+  data: SuggestRecipeAlternativesInput // This now includes optional apiKey
 ): Promise<SuggestRecipeAlternativesOutput> {
-  console.log("Server Action: handleRecipeSuggestion called with", data);
+  console.log("Server Action: handleRecipeSuggestion called with recipe:", data.recipeName, "API Key provided:", !!data.apiKey);
   try {
     await new Promise(resolve => setTimeout(resolve, 1200));
     if (data.recipeName.toLowerCase().includes("trigger error")) {
@@ -81,13 +81,10 @@ export async function handleRecipeSuggestion(
 }
 
 export async function handleChatbotInteraction(
-  data: NutritionChatbotInput
+  data: NutritionChatbotInput // This now includes optional apiKey
 ): Promise<NutritionChatbotOutput> {
-  console.log("Server Action: handleChatbotInteraction called with", data.message);
+  console.log("Server Action: handleChatbotInteraction called with message:", data.message, "API Key provided:", !!data.apiKey);
   try {
-    // Note: Genkit flows might have their own internal delays.
-    // Adding a small artificial delay here if needed for testing UI, but usually not necessary.
-    // await new Promise(resolve => setTimeout(resolve, 500));
      if (data.message.toLowerCase().includes("trigger error")) {
         throw new Error("Simulated AI error in chatbot.");
     }
@@ -96,9 +93,21 @@ export async function handleChatbotInteraction(
   } catch (error) {
     console.error("Error in handleChatbotInteraction:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    // For chatbot, we might want to return a structured error response rather than throwing
-    // if the flow itself can handle it. But for unhandled exceptions, throwing is fine.
     throw new Error(`Chatbot interaction failed: ${errorMessage}. Please try again.`);
+  }
+}
+
+export async function handleHomeDashboardUpdate(
+  data: HomeDashboardInput // This includes optional apiKey
+): Promise<HomeDashboardOutput> {
+  console.log("Server Action: handleHomeDashboardUpdate called. API Key provided:", !!data.apiKey);
+  try {
+    const result = await homeDashboardFlow(data);
+    return result;
+  } catch (error) {
+    console.error("Error in handleHomeDashboardUpdate:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to update dashboard: ${errorMessage}. Please try again.`);
   }
 }
 
@@ -111,13 +120,12 @@ export async function handleLogin(data: LoginFormData): Promise<{ success: boole
   const testUsername = "testuser";
   const testEmail = "testuser@example.com";
 
-  // Simulate database check / Firebase Auth
   if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
     return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
   } else if (inputUsernameOrEmail === "error@example.com") {
-    return { success: false, message: "Simulated server error during login." };
+     return { success: false, message: "Oops! A server error occurred during login. Please try again later." };
   } else {
-    return { success: false, message: "Invalid username or password." };
+    return { success: false, message: "Invalid username or password. Please check your credentials and try again." };
   }
 }
 
@@ -125,14 +133,12 @@ export async function handleSignUp(data: SignUpFormData): Promise<{ success: boo
   console.log("Server Action: handleSignUp called with", data);
   await new Promise(resolve => setTimeout(resolve, 1500));
 
-  // Simulate database check / Firebase Auth
   if (data.email === "exists@example.com") {
-    return { success: false, message: "Email already exists." };
+    return { success: false, message: "Oops! That email address is already in use. Try another?" };
   }
   if (data.username === "takenuser") {
-    return { success: false, message: "Username is already taken." };
+    return { success: false, message: "Sorry, that username is already taken. Please choose a different one." };
   }
-  // Simulate successful signup
   const newUserId = "user" + Date.now();
   return { success: true, message: "Account created successfully! You are now logged in.", user: { id: newUserId, username: data.username, email: data.email } };
 }
@@ -145,7 +151,6 @@ export async function handleAccountUpdate(data: AccountSettingsFormData): Promis
   if (data.username === "erroruser") {
      return { success: false, message: "Simulated error: Username 'erroruser' cannot be used." };
   }
-  // In a real app, update user in database here
   console.log("Account update simulated successfully for user:", data.username);
   return { success: true, message: "Account updated successfully." };
 }
@@ -156,24 +161,18 @@ export async function handleChangePasswordAction(data: ChangePasswordFormData): 
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   if (data.currentPassword === "wrongpassword") {
-     return { success: false, message: "Incorrect current password." };
+     return { success: false, message: "Incorrect current password. Please try again." };
   }
-  if (data.newPassword.length < 8) { // Example server-side validation
-      return { success: false, message: "New password is too short (server validation)." };
+  if (data.newPassword.length < 8) { 
+      return { success: false, message: "New password is too short (minimum 8 characters required by server)." };
   }
-  // In a real app: 1. Verify currentPassword, 2. Hash newPassword, 3. Update password in DB
   console.log("Password change simulated successfully.");
   return { success: true, message: "Password changed successfully." };
 }
 
 export async function handleDeleteAccountAction(): Promise<{ success: boolean; message: string }> {
-  // In a real app, you'd need the userId, typically from session/auth context
   console.log("Server Action: handleDeleteAccountAction called");
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Simulate deletion logic
-  // if (userId === 'protectedUser') return { success: false, message: "This account cannot be deleted (simulation)." };
-  
   console.log("Account deletion simulated successfully.");
   return { success: true, message: "Account deleted successfully." };
 }
@@ -183,24 +182,8 @@ export async function handleLogSymptom(data: SymptomLogFormValues): Promise<{ su
   await new Promise(resolve => setTimeout(resolve, 800));
 
   if (data.mealName.toLowerCase().includes("trigger error")) {
-    return { success: false, message: "Simulated error logging symptoms." };
+    return { success: false, message: "Simulated error logging symptoms. Please try again." };
   }
-  // In a real app, save symptom log to database here
   console.log("Symptom log simulated successfully for meal:", data.mealName);
   return { success: true, message: "Symptoms logged successfully." };
 }
-
-// Placeholder for future actions (Challenges, Community, etc.)
-// These would typically involve database interactions.
-// export async function fetchChallenges(): Promise<any[]> {
-//   console.log("Server Action: fetchChallenges called");
-//   await new Promise(resolve => setTimeout(resolve, 1000));
-//   // Simulate fetching from DB
-//   return [{ id: 1, title: "Dynamic Challenge 1", description: "Fetched from server" }];
-// }
-
-// export async function submitCommunityPost(postData: any): Promise<{success: boolean, message: string}> {
-//    console.log("Server Action: submitCommunityPost", postData);
-//    await new Promise(resolve => setTimeout(resolve, 1000));
-//    return {success: true, message: "Post submitted (simulated)!"};
-// }

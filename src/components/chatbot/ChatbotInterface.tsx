@@ -11,13 +11,12 @@ import { useMutation } from "@tanstack/react-query";
 import { CornerDownLeft, Loader2, User, Bot } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getAuthUser, saveChatHistory, getChatHistory, type ChatMessage, type AuthUser } from "@/lib/authLocalStorage";
+import { getAuthUser, saveChatHistory, getChatHistory, type ChatMessage, type AuthUser, getApiKey, getUserDetails, type StoredUserDetails } from "@/lib/authLocalStorage";
 
-// Ensure ChatMessage type here matches the one in authLocalStorage.ts if used directly
-// For this example, ChatMessage defined in authLocalStorage.ts will be the source of truth.
 
 export function ChatbotInterface() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [userDetails, setUserDetails] = useState<StoredUserDetails | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: "initial", role: "model", content: "Hello! I'm Nutri AI. How can I help you with your nutrition today?" }
   ]);
@@ -33,6 +32,8 @@ export function ChatbotInterface() {
       if (storedHistory && storedHistory.length > 0) {
         setMessages(storedHistory);
       }
+      const details = getUserDetails(user.id);
+      setUserDetails(details);
     }
   }, []);
 
@@ -93,12 +94,23 @@ export function ChatbotInterface() {
     
     const chatHistoryForApi = updatedMessagesWithUser.map(m => ({role: m.role, content: m.content}));
 
-    // For now, userProfile is static. In a real app, this would come from user state/context.
-    const userProfile = {
-        healthGoals: "General wellness", // Example, fetch from StoredUserDetails if available
+    const userProfileForApi = {
+        healthGoals: userDetails?.primaryHealthGoal || "General wellness",
+        restrictions: userDetails?.dietaryRestrictions?.other || Object.entries(userDetails?.dietaryRestrictions || {})
+            .filter(([, value]) => value === true)
+            .map(([key]) => key)
+            .join(', ') || undefined,
+        preferences: undefined, // Can be expanded if preferences are stored
     };
 
-    mutation.mutate({ message: currentMessageContent, history: chatHistoryForApi, userProfile });
+    const userApiKey = getApiKey(authUser.id);
+
+    mutation.mutate({ 
+      message: currentMessageContent, 
+      history: chatHistoryForApi, 
+      userProfile: userProfileForApi,
+      ...(userApiKey && { apiKey: userApiKey }),
+    });
     setInputValue("");
   };
 

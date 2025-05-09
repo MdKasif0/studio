@@ -25,6 +25,7 @@ const AnalyzeDietaryHabitsInputSchema = z.object({
   healthGoals: z
     .string()
     .describe('User health goals, e.g., weight loss, muscle gain, improved energy, better gut health, general wellness.'),
+  apiKey: z.string().optional().describe('Optional user-provided Google AI API key.'),
 });
 
 export type AnalyzeDietaryHabitsInput = z.infer<typeof AnalyzeDietaryHabitsInputSchema>;
@@ -45,7 +46,7 @@ export async function analyzeDietaryHabits(input: AnalyzeDietaryHabitsInput): Pr
 
 const prompt = ai.definePrompt({
   name: 'analyzeDietaryHabitsPrompt',
-  input: {schema: AnalyzeDietaryHabitsInputSchema},
+  input: {schema: AnalyzeDietaryHabitsInputSchema.omit({ apiKey: true })}, // Exclude apiKey from prompt's direct input schema
   output: {schema: AnalyzeDietaryHabitsOutputSchema},
   prompt: `You are an expert AI Nutrition Coach. Analyze the following dietary information for a user and provide personalized insights, actionable recommendations, and relevant nutrition tips.
 
@@ -70,9 +71,10 @@ const analyzeDietaryHabitsFlow = ai.defineFlow(
     inputSchema: AnalyzeDietaryHabitsInputSchema,
     outputSchema: AnalyzeDietaryHabitsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { apiKey, ...promptInput } = input;
+    const options = apiKey ? { config: { apiKey } } : undefined;
+    const { output } = await prompt(promptInput, options);
     return output!;
   }
 );
-
