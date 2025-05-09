@@ -26,30 +26,32 @@ export async function generateProgressSnapshotMessage(input: GenerateProgressSna
   return generateProgressSnapshotMessageFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateProgressSnapshotMessagePrompt',
-  input: {schema: GenerateProgressSnapshotMessageInputSchema},
-  output: {schema: GenerateProgressSnapshotMessageOutputSchema},
-  prompt: `You are an encouraging AI nutrition coach. Generate a short, positive message for the user's progress snapshot.
-{{#if userName}}Hi {{{userName}}}! {{/if}}
-{{#if mealLogStreak}}
-  {{#if (eq mealLogStreak 0)}}
-    Start logging your meals and feelings to track your progress and get personalized insights! What's one healthy choice you can make today?
-  {{else if (eq mealLogStreak 1)}}
-    Great start! You've logged for 1 day. Keep building that healthy habit!
-  {{else if (lt mealLogStreak 7)}}
-    You've logged meals for {{{mealLogStreak}}} days straight! Awesome consistency. Keep it up!
-  {{else if (lt mealLogStreak 30)}}
-    Amazing! {{{mealLogStreak}}} days of consistent logging. You're building strong habits!
-  {{else}}
-    Wow, {{{mealLogStreak}}} days of dedication! You're a true nutrition champion!
-  {{/if}}
-{{else}}
-Start logging your meals and feelings to track your progress and get personalized insights! What's one healthy choice you can make today?
-{{/if}}
-Keep up the fantastic work on your wellness journey!
-`,
-});
+// This prompt constant is not directly used by the flow logic below,
+// as the flow constructs the prompt dynamically. It can be kept for reference or removed.
+// const unusedPromptReference = ai.definePrompt({
+//   name: 'generateProgressSnapshotMessagePrompt',
+//   input: {schema: GenerateProgressSnapshotMessageInputSchema},
+//   output: {schema: GenerateProgressSnapshotMessageOutputSchema},
+//   prompt: `You are an encouraging AI nutrition coach. Generate a short, positive message for the user's progress snapshot.
+// {{#if userName}}Hi {{{userName}}}! {{/if}}
+// {{#if mealLogStreak}}
+//   {{#if (eq mealLogStreak 0)}}
+//     Start logging your meals and feelings to track your progress and get personalized insights! What's one healthy choice you can make today?
+//   {{else if (eq mealLogStreak 1)}}
+//     Great start! You've logged for 1 day. Keep building that healthy habit!
+//   {{else if (lt mealLogStreak 7)}}
+//     You've logged meals for {{{mealLogStreak}}} days straight! Awesome consistency. Keep it up!
+//   {{else if (lt mealLogStreak 30)}}
+//     Amazing! {{{mealLogStreak}}} days of consistent logging. You're building strong habits!
+//   {{else}}
+//     Wow, {{{mealLogStreak}}} days of dedication! You're a true nutrition champion!
+//   {{/if}}
+// {{else}}
+// Start logging your meals and feelings to track your progress and get personalized insights! What's one healthy choice you can make today?
+// {{/if}}
+// Keep up the fantastic work on your wellness journey!
+// `,
+// });
 
 
 const generateProgressSnapshotMessageFlow = ai.defineFlow(
@@ -59,8 +61,6 @@ const generateProgressSnapshotMessageFlow = ai.defineFlow(
     outputSchema: GenerateProgressSnapshotMessageOutputSchema,
   },
   async input => {
-    // A simple heuristic for the prompt might be better than complex handlebars for this one.
-    // Let's reconstruct the prompt logic here for more control if Handlebars is tricky with complex conditions.
     let customPrompt = `You are an encouraging AI nutrition coach. Generate a short, positive message for the user's progress snapshot.\n`;
     if (input.userName) {
       customPrompt += `Hi ${input.userName}! `;
@@ -87,7 +87,14 @@ const generateProgressSnapshotMessageFlow = ai.defineFlow(
         prompt: customPrompt,
     });
 
-    const {output} = await dynamicPrompt({}); // No input needed as it's embedded in prompt string
-    return output!;
+    const llmResponse = await dynamicPrompt({}); // No input needed as it's embedded in prompt string
+    const output = llmResponse.output; // output can be null
+
+    if (output && typeof output.message === 'string') {
+      return output;
+    }
+    console.warn('GenerateProgressSnapshotMessage: AI did not return expected message or output was null. Input:', input, 'LLM Output:', output);
+    return { message: "Keep up the great work! We're having a little trouble generating a custom message right now." };
   }
 );
+

@@ -49,11 +49,15 @@ const generateQuickShoppingListFlow = ai.defineFlow(
     outputSchema: GenerateQuickShoppingListOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const llmResponse = await prompt(input);
+    const output = llmResponse.output; // output can be null
+
     // Ensure items are always returned, even if empty, and not more than 4.
-    if (output && output.items) {
+    if (output && output.items && Array.isArray(output.items)) {
         return { items: output.items.slice(0, 4) };
     }
-    return { items: [] };
+    console.warn('QuickShoppingList: AI did not return expected items or output was null. Input:', input, 'LLM Output:', output);
+    return { items: [] }; // Return empty list for graceful degradation in UI
   }
 );
+

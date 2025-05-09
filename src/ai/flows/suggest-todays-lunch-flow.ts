@@ -51,7 +51,18 @@ const suggestTodaysLunchFlow = ai.defineFlow(
     outputSchema: SuggestTodaysLunchOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const llmResponse = await prompt(input);
+    const output = llmResponse.output; // output can be null
+
+    if (output && typeof output.suggestion === 'string') {
+      // recipeBrief is optional, so checking suggestion is enough
+      return output;
+    }
+    console.warn('SuggestTodaysLunch: AI did not return expected output or output was null. Input:', input, 'LLM Output:', output);
+    return { 
+      suggestion: "AI couldn't suggest a lunch idea right now.", 
+      recipeBrief: "Please try again later or check the meal planner." 
+    };
   }
 );
+
