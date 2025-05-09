@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -20,6 +21,22 @@ import {
   type NutritionChatbotInput,
   type NutritionChatbotOutput,
 } from "@/ai/flows/nutrition-chatbot-flow";
+import {
+  suggestTodaysLunch,
+  type SuggestTodaysLunchInput,
+  type SuggestTodaysLunchOutput,
+} from "@/ai/flows/suggest-todays-lunch-flow";
+import {
+  generateQuickShoppingList,
+  type GenerateQuickShoppingListInput,
+  type GenerateQuickShoppingListOutput,
+} from "@/ai/flows/generate-quick-shopping-list-flow";
+import {
+  generateProgressSnapshotMessage,
+  type GenerateProgressSnapshotMessageInput,
+  type GenerateProgressSnapshotMessageOutput,
+} from "@/ai/flows/generate-progress-snapshot-message-flow";
+
 import type { AccountSettingsFormData, ChangePasswordFormData, LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
@@ -115,7 +132,8 @@ export async function handleLogin(data: LoginFormData): Promise<{ success: boole
   if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
     return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
   } else if (inputUsernameOrEmail === "error@example.com") {
-    return { success: false, message: "Simulated server error during login." };
+    // This condition is for general error testing, not specific credential failure.
+    throw new Error("Simulated server error during login.");
   } else {
     return { success: false, message: "Invalid username or password." };
   }
@@ -189,6 +207,52 @@ export async function handleLogSymptom(data: SymptomLogFormValues): Promise<{ su
   console.log("Symptom log simulated successfully for meal:", data.mealName);
   return { success: true, message: "Symptoms logged successfully." };
 }
+
+export async function handleSuggestTodaysLunch(
+  data: SuggestTodaysLunchInput
+): Promise<SuggestTodaysLunchOutput> {
+  console.log("Server Action: handleSuggestTodaysLunch called with", data);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await suggestTodaysLunch(data);
+    return result;
+  } catch (error) {
+    console.error("Error in handleSuggestTodaysLunch:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to suggest lunch: ${errorMessage}.`);
+  }
+}
+
+export async function handleGenerateQuickShoppingList(
+  data: GenerateQuickShoppingListInput
+): Promise<GenerateQuickShoppingListOutput> {
+  console.log("Server Action: handleGenerateQuickShoppingList called with", data);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const result = await generateQuickShoppingList(data);
+    return result;
+  } catch (error) {
+    console.error("Error in handleGenerateQuickShoppingList:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to generate shopping list: ${errorMessage}.`);
+  }
+}
+
+export async function handleGenerateProgressMessage(
+  data: GenerateProgressSnapshotMessageInput
+): Promise<GenerateProgressSnapshotMessageOutput> {
+  console.log("Server Action: handleGenerateProgressMessage called with", data);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const result = await generateProgressSnapshotMessage(data);
+    return result;
+  } catch (error) {
+    console.error("Error in handleGenerateProgressMessage:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    throw new Error(`Failed to generate progress message: ${errorMessage}.`);
+  }
+}
+
 
 // Placeholder for future actions (Challenges, Community, etc.)
 // These would typically involve database interactions.
