@@ -1,33 +1,32 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query"; // useMutation, useQuery are not directly used here anymore for dashboard
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { Metadata } from "next";
+// import type { Metadata } from "next"; // Metadata is in layout or page specific layouts
 import { getAuthUser, getUserDetails, getApiKey, type AuthUser, type StoredUserDetails, saveHomeDashboardData, getHomeDashboardData, type HomeDashboardCache } from "@/lib/authLocalStorage";
 import { handleHomeDashboardUpdate } from "@/lib/actions";
 import type { HomeDashboardInput, HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 import { useToast } from "@/hooks/use-toast";
 
-// Metadata should be in layout.tsx for App Router, but kept here for consistency with previous structure if any.
-// export const metadata: Metadata = { ... };
+// export const metadata: Metadata = { ... }; // Metadata typically in layout.tsx or page-specific layouts
 
 export default function HomePage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [userDetails, setUserDetails] = useState<StoredUserDetails | null>(null);
   const [dashboardData, setDashboardData] = useState<HomeDashboardOutput | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // Not directly used for dashboard mutation trigger here
   const { toast } = useToast();
 
   const fetchAndSetDashboardData = useCallback(async () => {
     if (!authUser) {
       setIsLoadingDashboard(false);
+      setDashboardData(null); // Clear dashboard data if no user
       return;
     }
     
@@ -35,23 +34,28 @@ export default function HomePage() {
     const cachedData = getHomeDashboardData(authUser.id);
     const now = new Date().getTime();
 
-    if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { // Cache for 15 mins
+    // Use cache if valid (e.g., < 15 minutes old)
+    if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
       setDashboardData(cachedData.data);
       setIsLoadingDashboard(false);
       return;
     }
 
+    // Fetch new data if no cache or cache is stale
     try {
       const userApiKey = getApiKey(authUser.id);
+      const currentLocalUserDetails = getUserDetails(authUser.id); // Get latest details for the call
+      setUserDetails(currentLocalUserDetails); // Also update local state if needed, though primarily for input construction
+
       const input: HomeDashboardInput = {
         userId: authUser.id,
         userProfile: {
-          healthGoals: userDetails?.primaryHealthGoal || "general wellness",
-          dietaryRestrictions: userDetails?.dietaryRestrictions ? 
-            Object.entries(userDetails.dietaryRestrictions)
+          healthGoals: currentLocalUserDetails?.primaryHealthGoal || "general wellness",
+          dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ? 
+            Object.entries(currentLocalUserDetails.dietaryRestrictions)
                   .filter(([, value]) => value === true)
                   .map(([key]) => key)
-                  .join(', ') + (userDetails.dietaryRestrictions.other ? `, ${userDetails.dietaryRestrictions.other}` : '')
+                  .join(', ') + (currentLocalUserDetails.dietaryRestrictions.other ? `, ${currentLocalUserDetails.dietaryRestrictions.other}` : '')
             : "none",
         },
         currentDate: new Date().toISOString().split('T')[0],
@@ -67,28 +71,30 @@ export default function HomePage() {
         title: "Dashboard Error",
         description: error instanceof Error ? error.message : "Could not load dashboard data.",
       });
-      // Use cached data if available on error, otherwise set to null
-      setDashboardData(cachedData ? cachedData.data : null);
+      setDashboardData(cachedData ? cachedData.data : null); // Fallback to stale cache on error if available
     } finally {
       setIsLoadingDashboard(false);
     }
-  }, [authUser, userDetails, toast]);
+  }, [authUser, toast]); // Removed userDetails from here as it's fetched inside or should trigger re-fetch via authUser change
 
   useEffect(() => {
     const user = getAuthUser();
-    setAuthUser(user);
+    setAuthUser(user); // This will trigger the dependent useEffect for dashboard data
     if (user) {
-      const details = getUserDetails(user.id);
+      const details = getUserDetails(user.id); // Initial fetch for local state if needed elsewhere
       setUserDetails(details);
+    } else {
+      setIsLoadingDashboard(false); // No user, stop loading
+      setDashboardData(null); // Clear dashboard if user logs out
     }
-  }, []);
+  }, []); // Runs once on mount to get initial auth state
 
   useEffect(() => {
     if (authUser) {
       fetchAndSetDashboardData();
-    } else {
-      setIsLoadingDashboard(false); // Not logged in, no data to load
     }
+    // This effect runs when authUser changes or fetchAndSetDashboardData definition changes
+    // (which it does if authUser changes its identity).
   }, [authUser, fetchAndSetDashboardData]);
 
 
@@ -180,21 +186,21 @@ export default function HomePage() {
     {
       icon: Apple,
       title: "Today's Lunch Suggestion",
-      getData: (data: HomeDashboardOutput | null) => data?.lunchSuggestion || "Loading suggestion...",
+      getData: (data: HomeDashboardOutput | null) => data?.lunchSuggestion || "No suggestion available.",
       link: "/meal-plan",
       cta: "View Full Meal Plan",
     },
     {
       icon: ShoppingCart,
       title: "Shopping List Quick View",
-      getData: (data: HomeDashboardOutput | null) => data?.shoppingListPreview?.join(', ') || "Loading shopping items...",
+      getData: (data: HomeDashboardOutput | null) => data?.shoppingListPreview && data.shoppingListPreview.length > 0 ? data.shoppingListPreview.join(', ') : "No items in quick view.",
       link: "/meal-plan", 
       cta: "See Full List",
     },
     {
       icon: Activity,
       title: "Your Progress Snapshot",
-      getData: (data: HomeDashboardOutput | null) => data?.progressSummary || "Loading progress...",
+      getData: (data: HomeDashboardOutput | null) => data?.progressSummary || "No progress summary yet.",
       link: "/progress-tracking",
       cta: "Track Details",
     },
@@ -238,7 +244,7 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
-        ) : (
+        ) : authUser && dashboardData ? ( // Only show dashboard if user is logged in and data is available
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {dashboardSnippets.map((snippet) => (
               <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
@@ -262,13 +268,11 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
-        )}
-        {!isLoadingDashboard && !dashboardData && authUser && (
-            <p className="text-center mt-6 text-md text-muted-foreground">
-                Could not load dashboard data. Please try again later or check your API key.
+        ) : authUser && !dashboardData ? ( // User logged in, but no dashboard data (e.g., error)
+             <p className="text-center mt-6 text-md text-muted-foreground">
+                Could not load dashboard data. Please check your API key or try again later.
             </p>
-        )}
-         {!authUser && (
+        ) : ( // No user logged in
             <p className="text-center mt-6 text-md text-muted-foreground">
                 Login to view your personalized dashboard.
             </p>
