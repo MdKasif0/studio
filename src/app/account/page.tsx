@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound } from "lucide-react";
+import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2 } from "lucide-react"; // Added Loader2
 import { AccountForm } from "@/components/account/AccountForm";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import type { AccountSettingsFormData, ChangePasswordFormData } from "@/lib/schemas/authSchemas";
