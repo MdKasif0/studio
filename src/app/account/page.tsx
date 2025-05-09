@@ -27,7 +27,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser, getOnboardingComplete, setOnboardingComplete } from '@/lib/authLocalStorage';
+import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser, getOnboardingComplete, setOnboardingComplete, saveAuthUser as saveAuthUserToLocal } from '@/lib/authLocalStorage';
 import { useRouter } from 'next/navigation';
 
 
@@ -100,7 +100,7 @@ export default function AccountPage() {
       if (response.success && authUser) {
         if (authUser.username !== submittedData.username || authUser.email !== submittedData.email) {
             const updatedAuthUser = { ...authUser, username: submittedData.username, email: submittedData.email };
-            saveAuthUser(updatedAuthUser); // Save updated AuthUser if username/email changes
+            saveAuthUserToLocal(updatedAuthUser); // Save updated AuthUser if username/email changes
             setAuthUser(updatedAuthUser);
         }
 
@@ -120,14 +120,18 @@ export default function AccountPage() {
           description: response.message,
         });
       } else {
-         toast({ variant: "destructive", title: "Update Failed", description: response.message });
+         toast({ 
+            variant: "destructive", 
+            title: "Update Failed", 
+            description: response.message || "Bummer! We couldn't update your profile. Please double-check your info." 
+        });
       }
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         title: "Update Error",
-        description: error.message,
+        description: error.message || "An unexpected hiccup! We couldn't save your changes. Please try again.",
       });
     },
   });
@@ -135,9 +139,19 @@ export default function AccountPage() {
   const passwordChangeMutation = useMutation({
     mutationFn: handleChangePasswordAction,
     onSuccess: (response) => {
+        let description = response.message;
+        if (!response.success) {
+            if (response.message?.includes("Incorrect current password")) {
+                description = "That's not your current password. Please try again.";
+            } else if (response.message?.includes("New password is too short")) {
+                description = "Your new password needs to be a bit longer and stronger. Please check the requirements.";
+            } else {
+                description = response.message || "Snap! Password change failed. Please try again.";
+            }
+        }
       toast({
         title: response.success ? "Password Changed" : "Password Change Failed",
-        description: response.message,
+        description: description,
         variant: response.success ? "default" : "destructive",
       });
       if (response.success) {
@@ -148,7 +162,7 @@ export default function AccountPage() {
       toast({
         variant: "destructive",
         title: "Password Change Error",
-        description: error.message,
+        description: error.message || "Houston, we have a password problem! An error occurred. Please try again.",
       });
     },
   });
@@ -158,7 +172,7 @@ export default function AccountPage() {
     onSuccess: (response) => {
       toast({
         title: response.success ? "Account Deletion Initiated" : "Deletion Failed",
-        description: response.message,
+        description: response.message || (response.success ? "Your account deletion is being processed." : "Oh dear, we couldn't start the account deletion. Please try again."),
         variant: response.success ? "default" : "destructive",
       });
       if (response.success && authUser) {
@@ -170,7 +184,7 @@ export default function AccountPage() {
       toast({
         variant: "destructive",
         title: "Deletion Error",
-        description: error.message,
+        description: error.message || "An issue occurred while trying to delete your account. Please try again.",
       });
     },
   });
@@ -393,3 +407,4 @@ export default function AccountPage() {
     </div>
   );
 }
+

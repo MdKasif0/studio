@@ -38,7 +38,7 @@ export default function SignInPage() {
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: data.message,
+          description: data.message === "Invalid username or password." ? data.message : "Oops! Login failed. Please check your credentials or try again.",
         });
       }
     },
@@ -46,7 +46,7 @@ export default function SignInPage() {
       toast({
         variant: "destructive",
         title: "Login Error",
-        description: error.message || "An unexpected error occurred during login.",
+        description: error.message || "Oh no! Something went wrong during login. Please try again in a moment.",
       });
     },
   });
@@ -76,10 +76,18 @@ export default function SignInPage() {
         });
         router.push('/onboarding'); // Redirect to onboarding after successful sign up
       } else {
+        let description = "Yikes! Sign up didn't work. Please check your details and try again.";
+        if (data.message?.includes("Email already exists")) {
+            description = "It looks like that email is already registered. Try logging in or use a different email!";
+        } else if (data.message?.includes("Username is already taken")) {
+            description = "That username is already taken. How about a different one?";
+        } else if (data.message) {
+            description = data.message;
+        }
         toast({
           variant: "destructive",
           title: "Sign Up Failed",
-          description: data.message,
+          description: description,
         });
       }
     },
@@ -87,7 +95,7 @@ export default function SignInPage() {
       toast({
         variant: "destructive",
         title: "Sign Up Error",
-        description: error.message || "An unexpected error occurred during sign up.",
+        description: error.message || "Oh snap! An error occurred while creating your account. Please try again.",
       });
     },
   });
@@ -136,3 +144,4 @@ export default function SignInPage() {
     </div>
   );
 }
+

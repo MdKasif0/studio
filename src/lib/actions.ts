@@ -46,9 +46,7 @@ export async function handleDietaryAnalysis(
 ): Promise<AnalyzeDietaryHabitsOutput> {
   console.log("Server Action: handleDietaryAnalysis called with", data);
   try {
-    // Simulate a short delay for network
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // Example of how to trigger a simulated error for testing
     if (data.dietaryHabits.toLowerCase().includes("trigger error")) {
       throw new Error("Simulated AI error during dietary analysis.");
     }
@@ -57,7 +55,7 @@ export async function handleDietaryAnalysis(
   } catch (error) {
     console.error("Error in handleDietaryAnalysis:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to analyze dietary habits: ${errorMessage}. Please try again.`);
+    throw new Error(`Oops! We couldn't analyze your diet right now. ${errorMessage}. Please check your input or try again in a moment.`);
   }
 }
 
@@ -66,7 +64,7 @@ export async function handleMealPlanGeneration(
 ): Promise<GenerateCustomMealPlanOutput> {
   console.log("Server Action: handleMealPlanGeneration called with", data);
   try {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate longer delay
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
      if (data.calorieIntake === 0) {
       throw new Error("Simulated AI error: Calorie intake cannot be zero.");
     }
@@ -75,7 +73,7 @@ export async function handleMealPlanGeneration(
   } catch (error) {
     console.error("Error in handleMealPlanGeneration:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to generate meal plan: ${errorMessage}. Please try again.`);
+    throw new Error(`Hmm, we're having trouble crafting your meal plan. ${errorMessage}. Please ensure all details are correct or try again later.`);
   }
 }
 
@@ -93,7 +91,7 @@ export async function handleRecipeSuggestion(
   } catch (error) {
     console.error("Error in handleRecipeSuggestion:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to suggest recipe alternatives: ${errorMessage}. Please try again.`);
+    throw new Error(`Looks like we couldn't find alternatives for that recipe. ${errorMessage}. Please check the details or try a different one.`);
   }
 }
 
@@ -102,9 +100,6 @@ export async function handleChatbotInteraction(
 ): Promise<NutritionChatbotOutput> {
   console.log("Server Action: handleChatbotInteraction called with", data.message);
   try {
-    // Note: Genkit flows might have their own internal delays.
-    // Adding a small artificial delay here if needed for testing UI, but usually not necessary.
-    // await new Promise(resolve => setTimeout(resolve, 500));
      if (data.message.toLowerCase().includes("trigger error")) {
         throw new Error("Simulated AI error in chatbot.");
     }
@@ -113,9 +108,7 @@ export async function handleChatbotInteraction(
   } catch (error) {
     console.error("Error in handleChatbotInteraction:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    // For chatbot, we might want to return a structured error response rather than throwing
-    // if the flow itself can handle it. But for unhandled exceptions, throwing is fine.
-    throw new Error(`Chatbot interaction failed: ${errorMessage}. Please try again.`);
+    throw new Error(`My circuits are a bit tangled! I couldn't process that. ${errorMessage}. Could you try rephrasing or ask something else?`);
   }
 }
 
@@ -128,14 +121,17 @@ export async function handleLogin(data: LoginFormData): Promise<{ success: boole
   const testUsername = "testuser";
   const testEmail = "testuser@example.com";
 
-  // Simulate database check / Firebase Auth
-  if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
-    return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
-  } else if (inputUsernameOrEmail === "error@example.com") {
-    // This condition is for general error testing, not specific credential failure.
-    throw new Error("Simulated server error during login.");
-  } else {
-    return { success: false, message: "Invalid username or password." };
+  try {
+    if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
+      return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
+    } else if (inputUsernameOrEmail === "error@example.com") {
+      throw new Error("Simulated server error during login.");
+    } else {
+      return { success: false, message: "Invalid username or password." };
+    }
+  } catch (error) {
+     console.error("Server-side login error:", error);
+     throw new Error("Our server seems to be having a moment. Please try logging in again shortly.");
   }
 }
 
@@ -143,20 +139,24 @@ export async function handleSignUp(data: SignUpFormData): Promise<{ success: boo
   console.log("Server Action: handleSignUp called with", data);
   await new Promise(resolve => setTimeout(resolve, 1500));
 
-  // Simulate database check / Firebase Auth
-  if (data.email === "exists@example.com") {
-    return { success: false, message: "Email already exists." };
+  try {
+    if (data.email === "exists@example.com") {
+      return { success: false, message: "Email already exists." };
+    }
+    if (data.username === "takenuser") {
+      return { success: false, message: "Username is already taken." };
+    }
+    // Simulate successful signup
+    const newUserId = "user" + Date.now(); 
+    return { 
+      success: true, 
+      message: "Account created successfully! Please complete your profile.", 
+      user: { id: newUserId, username: data.username, email: data.email } 
+    };
+  } catch (error) {
+      console.error("Server-side sign-up error:", error);
+      throw new Error("We hit a snag creating your account. Please try again.");
   }
-  if (data.username === "takenuser") {
-    return { success: false, message: "Username is already taken." };
-  }
-  // Simulate successful signup
-  const newUserId = "user" + Date.now(); // Simple unique ID generation
-  return { 
-    success: true, 
-    message: "Account created successfully! Please complete your profile.", // Updated message
-    user: { id: newUserId, username: data.username, email: data.email } 
-  };
 }
 
 
@@ -164,12 +164,17 @@ export async function handleAccountUpdate(data: AccountSettingsFormData): Promis
   console.log("Server Action: handleAccountUpdate called with data:", data);
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  if (data.username === "erroruser") {
-     return { success: false, message: "Simulated error: Username 'erroruser' cannot be used." };
+  try {
+    if (data.username === "erroruser") {
+        return { success: false, message: "That username isn't available. Please choose a different one." };
+    }
+    // In a real app, update user in database here
+    console.log("Account update simulated successfully for user:", data.username);
+    return { success: true, message: "Account updated successfully." };
+  } catch (error) {
+    console.error("Server-side account update error:", error);
+    return { success: false, message: "Our servers stumbled a bit. Could you try saving your profile again?" };
   }
-  // In a real app, update user in database here
-  console.log("Account update simulated successfully for user:", data.username);
-  return { success: true, message: "Account updated successfully." };
 }
 
 
@@ -177,39 +182,48 @@ export async function handleChangePasswordAction(data: ChangePasswordFormData): 
   console.log("Server Action: handleChangePasswordAction called");
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  if (data.currentPassword === "wrongpassword") {
-     return { success: false, message: "Incorrect current password." };
+  try {
+    if (data.currentPassword === "wrongpassword") {
+        return { success: false, message: "Incorrect current password." };
+    }
+    if (data.newPassword.length < 8) { 
+        return { success: false, message: "New password is too short (server validation)." };
+    }
+    console.log("Password change simulated successfully.");
+    return { success: true, message: "Password changed successfully." };
+  } catch (error) {
+      console.error("Server-side password change error:", error);
+      return { success: false, message: "A glitch in the matrix! Password change failed. Please try once more." };
   }
-  if (data.newPassword.length < 8) { // Example server-side validation
-      return { success: false, message: "New password is too short (server validation)." };
-  }
-  // In a real app: 1. Verify currentPassword, 2. Hash newPassword, 3. Update password in DB
-  console.log("Password change simulated successfully.");
-  return { success: true, message: "Password changed successfully." };
 }
 
 export async function handleDeleteAccountAction(): Promise<{ success: boolean; message: string }> {
-  // In a real app, you'd need the userId, typically from session/auth context
   console.log("Server Action: handleDeleteAccountAction called");
   await new Promise(resolve => setTimeout(resolve, 1500));
   
-  // Simulate deletion logic
-  // if (userId === 'protectedUser') return { success: false, message: "This account cannot be deleted (simulation)." };
-  
-  console.log("Account deletion simulated successfully.");
-  return { success: true, message: "Account deleted successfully." };
+  try {
+    console.log("Account deletion simulated successfully.");
+    return { success: true, message: "Account deleted successfully." };
+  } catch (error) {
+    console.error("Server-side account deletion error:", error);
+    return { success: false, message: "Something went wrong on our end. Please try deleting your account again." };
+  }
 }
 
 export async function handleLogSymptom(data: SymptomLogFormValues): Promise<{ success: boolean; message: string }> {
   console.log("Server Action: handleLogSymptom called with data:", data);
   await new Promise(resolve => setTimeout(resolve, 800));
 
-  if (data.mealName.toLowerCase().includes("trigger error")) {
-    return { success: false, message: "Simulated error logging symptoms." };
+  try {
+    if (data.mealName.toLowerCase().includes("trigger error")) {
+      return { success: false, message: "Oh no! We couldn't save your symptom log due to a simulated issue. Please try again." };
+    }
+    console.log("Symptom log simulated successfully for meal:", data.mealName);
+    return { success: true, message: "Symptoms logged successfully." };
+  } catch (error) {
+    console.error("Server-side symptom log error:", error);
+    return { success: false, message: "Yikes! We couldn't record your symptoms right now. Please try again." };
   }
-  // In a real app, save symptom log to database here
-  console.log("Symptom log simulated successfully for meal:", data.mealName);
-  return { success: true, message: "Symptoms logged successfully." };
 }
 
 export async function handleSuggestTodaysLunch(
@@ -223,7 +237,7 @@ export async function handleSuggestTodaysLunch(
   } catch (error) {
     console.error("Error in handleSuggestTodaysLunch:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to suggest lunch: ${errorMessage}.`);
+    throw new Error(`I'm drawing a blank on lunch ideas right now! ${errorMessage}. Please try again in a bit.`);
   }
 }
 
@@ -238,7 +252,7 @@ export async function handleGenerateQuickShoppingList(
   } catch (error) {
     console.error("Error in handleGenerateQuickShoppingList:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to generate shopping list: ${errorMessage}.`);
+    throw new Error(`Can't quite remember what's in the pantry! ${errorMessage}. Please try generating the list again.`);
   }
 }
 
@@ -253,23 +267,7 @@ export async function handleGenerateProgressMessage(
   } catch (error) {
     console.error("Error in handleGenerateProgressMessage:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    throw new Error(`Failed to generate progress message: ${errorMessage}.`);
+    throw new Error(`Hmm, couldn't fetch your progress cheer-up. ${errorMessage}. We'll try again next time!`);
   }
 }
-
-
-// Placeholder for future actions (Challenges, Community, etc.)
-// These would typically involve database interactions.
-// export async function fetchChallenges(): Promise<any[]> {
-//   console.log("Server Action: fetchChallenges called");
-//   await new Promise(resolve => setTimeout(resolve, 1000));
-//   // Simulate fetching from DB
-//   return [{ id: 1, title: "Dynamic Challenge 1", description: "Fetched from server" }];
-// }
-
-// export async function submitCommunityPost(postData: any): Promise<{success: boolean, message: string}> {
-//    console.log("Server Action: submitCommunityPost", postData);
-//    await new Promise(resolve => setTimeout(resolve, 1000));
-//    return {success: true, message: "Post submitted (simulated)!"};
-// }
 
