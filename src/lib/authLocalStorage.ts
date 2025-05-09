@@ -3,10 +3,13 @@
 'use client'; // Local storage is a client-side API
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
+import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
 const USER_DETAILS_PREFIX = "nutriAIUserDetails_";
 const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
+const SYMPTOM_LOGS_PREFIX = "nutriAISymptomLogs_";
+
 
 export interface AuthUser {
   id: string;
@@ -25,6 +28,12 @@ export interface ChatMessage {
   content: string;
   suggestions?: string[];
 }
+
+export interface SymptomLogEntry extends SymptomLogFormValues {
+  id: string; // Unique ID for the log entry
+  loggedAt: string; // ISO string timestamp when the log was created by the user
+}
+
 
 // --- Auth User ---
 export function saveAuthUser(user: AuthUser): void {
@@ -76,10 +85,10 @@ export function saveChatHistory(userId: string, history: ChatMessage[]): void {
   }
 }
 
-export function getChatHistory(userId: string): ChatMessage[] | null {
+export function getChatHistory(userId: string): ChatMessage[] { // Return empty array if not found
   if (typeof window !== 'undefined') {
     const historyStr = localStorage.getItem(`${CHAT_HISTORY_PREFIX}${userId}`);
-    return historyStr ? JSON.parse(historyStr) : []; // Return empty array if not found for easier handling
+    return historyStr ? JSON.parse(historyStr) : []; 
   }
   return [];
 }
@@ -90,11 +99,42 @@ export function removeChatHistory(userId: string): void {
     }
 }
 
+// --- Symptom Logs ---
+export function saveSymptomLog(userId: string, logEntry: SymptomLogFormValues): void {
+  if (typeof window !== 'undefined') {
+    const logs = getSymptomLogs(userId);
+    const newLog: SymptomLogEntry = {
+      ...logEntry,
+      id: Date.now().toString(), // Simple unique ID
+      loggedAt: new Date().toISOString(),
+    };
+    logs.push(newLog);
+    localStorage.setItem(`${SYMPTOM_LOGS_PREFIX}${userId}`, JSON.stringify(logs));
+  }
+}
+
+export function getSymptomLogs(userId: string): SymptomLogEntry[] {
+  if (typeof window !== 'undefined') {
+    const logsStr = localStorage.getItem(`${SYMPTOM_LOGS_PREFIX}${userId}`);
+    return logsStr ? JSON.parse(logsStr) : [];
+  }
+  return [];
+}
+
+export function removeSymptomLogs(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${SYMPTOM_LOGS_PREFIX}${userId}`);
+  }
+}
+
+
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
     removeAuthUser();
     if (userId) {
         removeUserDetails(userId);
         removeChatHistory(userId);
+        removeSymptomLogs(userId);
     }
 }
+

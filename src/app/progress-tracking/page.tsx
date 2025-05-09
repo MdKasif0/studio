@@ -1,48 +1,69 @@
 
 "use client";
 
-import React from 'react';
-import { useMutation } from "@tanstack/react-query";
+import React, { useEffect, useState, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal } from "lucide-react";
+import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleLogSymptom } from "@/lib/actions";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
-// import type { Metadata } from "next"; // Not used directly in client component
+import { getAuthUser, saveSymptomLog, getSymptomLogs, type AuthUser, type SymptomLogEntry } from "@/lib/authLocalStorage";
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
 
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Progress & Symptom Tracking | Nutri AI",
-//   description: "Track your nutritional progress, log post-meal symptoms, and visualize your achievements with Nutri AI. (Not a medical tool).",
-// };
 
 export default function ProgressTrackingPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [defaultLogTime, setDefaultLogTime] = React.useState<string | undefined>(undefined);
 
-  React.useEffect(() => {
-    // Set default log time for the form when component mounts on client
+  const resetDefaultLogTime = useCallback(() => {
     const now = new Date();
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset * 60 * 1000));
     setDefaultLogTime(localDate.toISOString().slice(0, 16));
   }, []);
 
+  useEffect(() => {
+    const user = getAuthUser();
+    setAuthUser(user);
+    setIsLoadingAuth(false);
+    resetDefaultLogTime();
+  }, [resetDefaultLogTime]);
+
+  const { data: symptomLogs, isLoading: isLoadingLogs } = useQuery<SymptomLogEntry[], Error>({
+    queryKey: ['symptomLogs', authUser?.id],
+    queryFn: () => {
+      if (!authUser) return Promise.resolve([]);
+      return Promise.resolve(getSymptomLogs(authUser.id));
+    },
+    enabled: !!authUser, // Only run query if authUser is available
+  });
+
+
   const symptomLogMutation = useMutation({
-    mutationFn: handleLogSymptom,
+    mutationFn: async (data: SymptomLogFormValues) => {
+      // Simulate server action
+      const response = await handleLogSymptom(data); 
+      if (response.success && authUser) {
+        saveSymptomLog(authUser.id, data); // Save to local storage on client
+      }
+      return response;
+    },
     onSuccess: (data) => {
       toast({
         title: "Symptoms Logged",
         description: data.message,
       });
-      // Optionally, refetch progress data or update local state here
-      // Reset form default time for next entry
-      const now = new Date();
-      const offset = now.getTimezoneOffset();
-      const localDate = new Date(now.getTime() - (offset * 60 * 1000));
-      setDefaultLogTime(localDate.toISOString().slice(0, 16));
+      queryClient.invalidateQueries({ queryKey: ['symptomLogs', authUser?.id] }); // Refetch logs
+      resetDefaultLogTime(); // Reset form default time for next entry
     },
     onError: (error: Error) => {
       toast({
@@ -54,8 +75,31 @@ export default function ProgressTrackingPage() {
   });
 
   const onSymptomSubmit = (data: SymptomLogFormValues) => {
+    if (!authUser) {
+      toast({ variant: "destructive", title: "Error", description: "User not authenticated." });
+      return;
+    }
     symptomLogMutation.mutate(data);
   };
+
+  if (isLoadingAuth) {
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <User className="mx-auto h-16 w-16 text-accent mb-4 animate-pulse" />
+        <p className="text-muted-foreground">Loading user data...</p>
+      </div>
+    );
+  }
+
+  if (!authUser) {
+     return (
+      <div className="container mx-auto py-8 text-center">
+        <User className="mx-auto h-16 w-16 text-destructive mb-4" />
+        <p className="text-muted-foreground">Please log in to track your progress.</p>
+        {/* Optionally add a login button here */}
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8 md:space-y-12">
@@ -83,7 +127,7 @@ export default function ProgressTrackingPage() {
               <CardTitle className="text-xl md:text-2xl">Log Post-Meal Feelings</CardTitle>
             </div>
             <CardDescription className="text-sm md:text-base">
-              Note how you feel after meals to help identify patterns or potential sensitivities. This feature is in early development.
+              Note how you feel after meals to help identify patterns or potential sensitivities.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
@@ -99,7 +143,7 @@ export default function ProgressTrackingPage() {
             <SymptomLogForm 
               onSubmit={onSymptomSubmit} 
               isPending={symptomLogMutation.isPending}
-              initialDateTime={defaultLogTime} // Pass this to set form's default time
+              initialDateTime={defaultLogTime} 
             />
           </CardContent>
         </Card>
@@ -111,17 +155,51 @@ export default function ProgressTrackingPage() {
               <CardTitle className="text-xl md:text-2xl">Progress Overview</CardTitle>
             </div>
             <CardDescription className="text-sm md:text-base">
-              Visualize your nutritional intake, adherence, and other metrics. Charts and detailed stats are coming soon!
+              Visualize your nutritional intake, adherence, and logged feelings.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            <ProgressCharts />
+            <ProgressCharts symptomLogs={symptomLogs || []} isLoading={isLoadingLogs} />
           </CardContent>
         </Card>
       </div>
+      
+      <Card className="shadow-xl mt-8 md:mt-12">
+        <CardHeader>
+          <CardTitle className="text-xl md:text-2xl">Recent Symptom Logs</CardTitle>
+          <CardDescription>A quick view of your latest entries.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingLogs ? (
+            <p className="text-muted-foreground">Loading logs...</p>
+          ) : symptomLogs && symptomLogs.length > 0 ? (
+            <ScrollArea className="h-64">
+              <ul className="space-y-3">
+                {symptomLogs.slice().reverse().map(log => ( // Show newest first
+                  <li key={log.id} className="p-3 border rounded-md bg-muted/50">
+                    <p className="font-semibold text-sm">{log.mealName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Logged: {format(new Date(log.logTime), "MMM d, yyyy HH:mm")}
+                    </p>
+                    {log.energyLevel && <p className="text-xs">Energy: <span className="capitalize">{log.energyLevel}</span></p>}
+                    {log.mood && <p className="text-xs">Mood: {log.mood}</p>}
+                    {log.digestiveSymptoms && <p className="text-xs">Digestion: {log.digestiveSymptoms}</p>}
+                    {log.otherSymptoms && <p className="text-xs">Other: {log.otherSymptoms}</p>}
+                    {log.notes && <p className="text-xs mt-1 italic">Notes: {log.notes}</p>}
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          ) : (
+            <p className="text-muted-foreground">No symptoms logged yet. Use the form above to start tracking!</p>
+          )}
+        </CardContent>
+      </Card>
+
        <p className="text-center mt-4 md:mt-8 text-xs md:text-sm text-muted-foreground">
-          Full progress tracking and visualization features are under active development.
+          Full progress tracking and visualization features are under active development. More charts coming soon!
         </p>
     </div>
   );
 }
+
