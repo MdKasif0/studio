@@ -1,5 +1,5 @@
 
-"use client"; // Required for useMutation and client components
+"use client"; 
 
 import React from 'react';
 import { useMutation } from "@tanstack/react-query";
@@ -11,8 +11,7 @@ import { handleLogin, handleSignUp } from "@/lib/actions";
 import type { LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useRouter } from 'next/navigation';
-import { saveAuthUser, type AuthUser } from '@/lib/authLocalStorage';
-import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
+import { saveAuthUser, type AuthUser, saveUserDetails, setOnboardingComplete, getOnboardingComplete } from '@/lib/authLocalStorage';
 
 
 export default function SignInPage() {
@@ -24,12 +23,17 @@ export default function SignInPage() {
     mutationFn: handleLogin,
     onSuccess: (data) => {
       if (data.success && data.user) {
-        saveAuthUser(data.user as AuthUser); // Assuming data.user matches AuthUser structure
+        saveAuthUser(data.user as AuthUser);
         toast({
           title: "Login Successful!",
           description: data.message,
         });
-        router.push('/'); // Redirect to dashboard/homepage
+        // Check onboarding status after login
+        if (!getOnboardingComplete(data.user.id)) {
+          router.push('/onboarding');
+        } else {
+          router.push('/'); 
+        }
       } else {
         toast({
           variant: "destructive",
@@ -52,15 +56,25 @@ export default function SignInPage() {
     mutationFn: handleSignUp,
     onSuccess: (data) => {
       if (data.success && data.user) {
-        // Save basic auth user info. Full profile details (healthGoal, restrictions)
-        // will be set up upon first visit to account page or through a dedicated onboarding step.
-        saveAuthUser(data.user as AuthUser);
+        const authUser = data.user as AuthUser;
+        saveAuthUser(authUser);
+        
+        // Initialize basic user details and set onboarding to false
+        saveUserDetails(authUser.id, { 
+            primaryHealthGoal: "Improve Overall Health", // Default placeholder
+            dietaryRestrictions: {},
+            foodPreferences: "",
+            cookingTimePreference: "Flexible (any duration)",
+            lifestyleInfo: "",
+            // profilePictureDataUrl will be set later
+        });
+        setOnboardingComplete(authUser.id, false);
         
         toast({
           title: "Sign Up Successful!",
-          description: "Welcome! You are now logged in.",
+          description: "Welcome! Please complete your profile.",
         });
-        router.push('/'); // Redirect to dashboard/homepage after successful sign up
+        router.push('/onboarding'); // Redirect to onboarding after successful sign up
       } else {
         toast({
           variant: "destructive",
@@ -83,11 +97,6 @@ export default function SignInPage() {
   };
 
   const onSignUpSubmit = (data: SignUpFormData) => {
-    // The SignUpFormData contains more details than AuthUser.
-    // The backend `handleSignUp` should return an AuthUser compatible object.
-    // The additional details (healthGoal, restrictions) from SignUpFormData
-    // would typically be saved to a database and then fetched for `StoredUserDetails`.
-    // For now, we only save the AuthUser part from the response.
     signUpMutation.mutate(data);
   };
 
@@ -102,7 +111,7 @@ export default function SignInPage() {
           <CardDescription>Your personalized nutrition journey starts here.</CardDescription>
         </CardHeader>
         <CardContent>
-          {loginMutation.isError && !loginMutation.error.message.includes("Invalid username or password") && ( // Show general errors not specific to creds
+          {loginMutation.isError && !loginMutation.error.message.includes("Invalid username or password") && ( 
             <Alert variant="destructive" className="mb-4">
               <Terminal className="h-4 w-4" />
               <AlertTitle>Login Error</AlertTitle>
@@ -127,4 +136,3 @@ export default function SignInPage() {
     </div>
   );
 }
-

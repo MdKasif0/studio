@@ -27,7 +27,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser } from '@/lib/authLocalStorage';
+import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser, getOnboardingComplete, setOnboardingComplete } from '@/lib/authLocalStorage';
 import { useRouter } from 'next/navigation';
 
 
@@ -47,20 +47,29 @@ export default function AccountPage() {
     const currentAuthUser = getAuthUser();
     setAuthUser(currentAuthUser);
     if (currentAuthUser) {
+      if (!getOnboardingComplete(currentAuthUser.id)) {
+        router.replace('/onboarding'); // Should be handled by AppLayout, but as a fallback
+        return;
+      }
       const storedDetails = getUserDetails(currentAuthUser.id);
       if (storedDetails) {
         setUserDetails(storedDetails);
       } else {
-        // Initialize with defaults if no details found, using authUser for username/email
+        // Initialize with defaults if no details found, this case should be rare post-onboarding
         setUserDetails({
-          primaryHealthGoal: "Improve Overall Health", // Default or fetch from a default profile
-          dietaryRestrictions: { /* defaults */ },
+          primaryHealthGoal: "Improve Overall Health", 
+          dietaryRestrictions: {},
+          foodPreferences: "",
+          cookingTimePreference: "Flexible (any duration)",
+          lifestyleInfo: "",
           profilePictureDataUrl: "https://picsum.photos/seed/profile/200/200"
         });
       }
+    } else {
+      router.replace('/sign-in'); // No auth user, redirect to sign-in
     }
     setIsLoadingData(false);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     loadDataFromLocalStorage();
@@ -78,29 +87,29 @@ export default function AccountPage() {
           nutAllergy: false, shellfishAllergy: false, soyAllergy: false,
           lowCarb: false, keto: false, paleo: false, lowFodmap: false, other: "",
       },
+      foodPreferences: userDetails?.foodPreferences || "",
+      cookingTimePreference: userDetails?.cookingTimePreference || "Flexible (any duration)",
+      lifestyleInfo: userDetails?.lifestyleInfo || "",
     } as AccountSettingsFormData;
   }, [authUser, userDetails]);
 
 
   const profileUpdateMutation = useMutation({
-    mutationFn: handleAccountUpdate, // This is a server action
+    mutationFn: handleAccountUpdate, 
     onSuccess: (response, submittedData) => {
       if (response.success && authUser) {
-        // Update AuthUser if username/email changed (though typically email is fixed or special flow)
-        // For this example, username from submittedData updates authUser
-        const updatedAuthUser = { ...authUser, username: submittedData.username, email: submittedData.email };
-        // saveAuthUser(updatedAuthUser); // Be careful with email changes, usually needs verification.
-        // For now, let's assume email is not changed or handled by a separate flow.
-        // We'll update username in AuthUser for consistency if it changes.
-        if (authUser.username !== submittedData.username) {
-            saveAuthUser({...authUser, username: submittedData.username });
-            setAuthUser(prev => prev ? {...prev, username: submittedData.username} : null);
+        if (authUser.username !== submittedData.username || authUser.email !== submittedData.email) {
+            const updatedAuthUser = { ...authUser, username: submittedData.username, email: submittedData.email };
+            saveAuthUser(updatedAuthUser); // Save updated AuthUser if username/email changes
+            setAuthUser(updatedAuthUser);
         }
-
 
         const newDetails: StoredUserDetails = {
           primaryHealthGoal: submittedData.primaryHealthGoal,
           dietaryRestrictions: submittedData.dietaryRestrictions,
+          foodPreferences: submittedData.foodPreferences,
+          cookingTimePreference: submittedData.cookingTimePreference,
+          lifestyleInfo: submittedData.lifestyleInfo,
           profilePictureDataUrl: userDetails?.profilePictureDataUrl, // Keep existing pic
         };
         saveUserDetails(authUser.id, newDetails);
@@ -145,7 +154,7 @@ export default function AccountPage() {
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: handleDeleteAccountAction, // Needs userId, but mock action doesn't use it yet
+    mutationFn: handleDeleteAccountAction, 
     onSuccess: (response) => {
       toast({
         title: response.success ? "Account Deletion Initiated" : "Deletion Failed",
@@ -186,10 +195,9 @@ export default function AccountPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const newProfilePicDataUrl = reader.result as string;
-        // Simulate upload delay if desired, then save to local storage
         setTimeout(() => {
           const updatedDetails: StoredUserDetails = {
-            ...(userDetails || { primaryHealthGoal: "Improve Overall Health", dietaryRestrictions: {} }), // Ensure userDetails is not null
+            ...(userDetails || { /* default StoredUserDetails structure */ }),
             profilePictureDataUrl: newProfilePicDataUrl,
           };
           saveUserDetails(authUser.id, updatedDetails);
@@ -199,7 +207,7 @@ export default function AccountPage() {
             title: "Profile Picture Updated",
             description: "Your new profile picture has been set.",
           });
-        }, 1000); // Simulate upload
+        }, 1000); 
       };
       reader.readAsDataURL(file);
     }
@@ -267,9 +275,9 @@ export default function AccountPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-xl md:text-2xl flex items-center">
-            <User className="mr-2 h-6 w-6 text-primary" /> Personal Information
+            <User className="mr-2 h-6 w-6 text-primary" /> Personal Information & Preferences
           </CardTitle>
-          <CardDescription>Update your personal details and dietary preferences.</CardDescription>
+          <CardDescription>Update your personal details, dietary preferences, and lifestyle information.</CardDescription>
         </CardHeader>
         <CardContent>
           {profileUpdateMutation.isError && (

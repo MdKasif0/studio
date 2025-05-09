@@ -151,8 +151,12 @@ export async function handleSignUp(data: SignUpFormData): Promise<{ success: boo
     return { success: false, message: "Username is already taken." };
   }
   // Simulate successful signup
-  const newUserId = "user" + Date.now();
-  return { success: true, message: "Account created successfully! You are now logged in.", user: { id: newUserId, username: data.username, email: data.email } };
+  const newUserId = "user" + Date.now(); // Simple unique ID generation
+  return { 
+    success: true, 
+    message: "Account created successfully! Please complete your profile.", // Updated message
+    user: { id: newUserId, username: data.username, email: data.email } 
+  };
 }
 
 
@@ -268,3 +272,4 @@ export async function handleGenerateProgressMessage(
 //    await new Promise(resolve => setTimeout(resolve, 1000));
 //    return {success: true, message: "Post submitted (simulated)!"};
 // }
+

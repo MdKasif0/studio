@@ -2,13 +2,14 @@
 // src/lib/authLocalStorage.ts
 'use client'; // Local storage is a client-side API
 
-import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
+import type { AccountSettingsFormData, cookingTimePreferences, healthGoals, commonDietaryRestrictions } from "@/lib/schemas/authSchemas";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
 const USER_DETAILS_PREFIX = "nutriAIUserDetails_";
 const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
 const SYMPTOM_LOGS_PREFIX = "nutriAISymptomLogs_";
+const ONBOARDING_COMPLETE_PREFIX = "nutriAIOnboardingComplete_";
 
 
 export interface AuthUser {
@@ -18,8 +19,15 @@ export interface AuthUser {
 }
 
 // StoredUserDetails will store parts of AccountSettingsFormData not in AuthUser, plus profile pic
-export interface StoredUserDetails extends Omit<AccountSettingsFormData, 'username' | 'email'> {
+export interface StoredUserDetails {
+  primaryHealthGoal?: typeof healthGoals[number];
+  dietaryRestrictions?: {
+      [K in keyof typeof commonDietaryRestrictions]?: boolean;
+  } & { other?: string };
   profilePictureDataUrl?: string;
+  foodPreferences?: string;
+  cookingTimePreference?: typeof cookingTimePreferences[number];
+  lifestyleInfo?: string;
 }
 
 export interface ChatMessage {
@@ -59,7 +67,9 @@ export function removeAuthUser(): void {
 // --- User Details (Profile, Settings) ---
 export function saveUserDetails(userId: string, details: StoredUserDetails): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(`${USER_DETAILS_PREFIX}${userId}`, JSON.stringify(details));
+    const existingDetails = getUserDetails(userId) || {};
+    const updatedDetails = { ...existingDetails, ...details };
+    localStorage.setItem(`${USER_DETAILS_PREFIX}${userId}`, JSON.stringify(updatedDetails));
   }
 }
 
@@ -127,6 +137,27 @@ export function removeSymptomLogs(userId: string): void {
   }
 }
 
+// --- Onboarding Status ---
+export function setOnboardingComplete(userId: string, complete: boolean): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${ONBOARDING_COMPLETE_PREFIX}${userId}`, JSON.stringify(complete));
+  }
+}
+
+export function getOnboardingComplete(userId: string): boolean {
+  if (typeof window !== 'undefined') {
+    const statusStr = localStorage.getItem(`${ONBOARDING_COMPLETE_PREFIX}${userId}`);
+    return statusStr ? JSON.parse(statusStr) : false;
+  }
+  return false;
+}
+
+export function removeOnboardingComplete(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${ONBOARDING_COMPLETE_PREFIX}${userId}`);
+  }
+}
+
 
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
@@ -135,6 +166,7 @@ export function clearUserSession(userId?: string): void {
         removeUserDetails(userId);
         removeChatHistory(userId);
         removeSymptomLogs(userId);
+        removeOnboardingComplete(userId);
     }
 }
 

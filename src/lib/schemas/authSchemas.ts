@@ -25,6 +25,13 @@ export const commonDietaryRestrictions = {
   lowFodmap: "Low FODMAP", // Added
 } as const;
 
+export const cookingTimePreferences = [
+    "Quick (under 30 mins)",
+    "Moderate (30-60 mins)",
+    "Flexible (any duration)",
+] as const;
+
+
 export const loginSchema = z.object({
   usernameOrEmail: z.string().min(1, { message: "Username or Email is required." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -51,14 +58,7 @@ export const signUpSchema = z
     email: z.string().email({ message: "Invalid email address." }),
     password: passwordSchema,
     confirmPassword: z.string(),
-    dietaryRestrictions: z.object(
-      Object.fromEntries(
-        Object.keys(commonDietaryRestrictions).map(key => [key, z.boolean().default(false).optional()])
-      ) as Record<keyof typeof commonDietaryRestrictions, z.ZodOptional<z.ZodBoolean>> & { other: z.ZodOptional<z.ZodString> }
-    ).extend({ other: z.string().optional()}).optional(),
-    primaryHealthGoal: z.enum(healthGoals, {
-        errorMap: () => ({ message: "Please select a valid health goal." }),
-    }),
+    // primaryHealthGoal and dietaryRestrictions removed from here, will be collected during onboarding
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -83,6 +83,9 @@ export const accountSettingsSchema = z.object({
         Object.keys(commonDietaryRestrictions).map(key => [key, z.boolean().default(false).optional()])
       ) as Record<keyof typeof commonDietaryRestrictions, z.ZodOptional<z.ZodBoolean>> & { other: z.ZodOptional<z.ZodString> }
     ).extend({ other: z.string().optional()}).optional(),
+  foodPreferences: z.string().optional().describe("User's favorite cuisines, liked/disliked foods."),
+  cookingTimePreference: z.enum(cookingTimePreferences).optional().describe("User's preferred cooking time per meal."),
+  lifestyleInfo: z.string().optional().describe("Brief description of user's lifestyle (e.g., busy parent, athlete)."),
 });
 
 export type AccountSettingsFormData = z.infer<typeof accountSettingsSchema>;
@@ -97,3 +100,22 @@ export const changePasswordSchema = z.object({
 });
 
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+// Schema for Onboarding Wizard
+export const onboardingSchema = z.object({
+  primaryHealthGoal: z.enum(healthGoals, {
+    required_error: "Please select your primary health goal.",
+  }),
+  dietaryRestrictions: z.object(
+    Object.fromEntries(
+      Object.keys(commonDietaryRestrictions).map(key => [key, z.boolean().default(false).optional()])
+    ) as Record<keyof typeof commonDietaryRestrictions, z.ZodOptional<z.ZodBoolean>> & { other: z.ZodOptional<z.ZodString> }
+  ).extend({ other: z.string().optional()}),
+  foodPreferences: z.string().optional(),
+  cookingTimePreference: z.enum(cookingTimePreferences, {
+    required_error: "Please select your cooking time preference.",
+  }),
+  lifestyleInfo: z.string().optional(),
+});
+
+export type OnboardingFormData = z.infer<typeof onboardingSchema>;

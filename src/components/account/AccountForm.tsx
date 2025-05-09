@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { accountSettingsSchema, type AccountSettingsFormData, healthGoals, commonDietaryRestrictions } from "@/lib/schemas/authSchemas";
+import { accountSettingsSchema, type AccountSettingsFormData, healthGoals, commonDietaryRestrictions, cookingTimePreferences } from "@/lib/schemas/authSchemas";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -11,7 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription, // Added FormDescription
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,8 +30,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface AccountFormProps {
-  onSubmit: (data: AccountSettingsFormData) => void; // This will be mutation.mutate
-  initialData?: AccountSettingsFormData; // Make initialData optional
+  onSubmit: (data: AccountSettingsFormData) => void;
+  initialData?: AccountSettingsFormData;
   isPending: boolean;
 }
 
@@ -55,6 +56,9 @@ export function AccountForm({ onSubmit, initialData, isPending }: AccountFormPro
         lowFodmap: false,
         other: "",
       },
+      foodPreferences: "",
+      cookingTimePreference: undefined,
+      lifestyleInfo: "",
     },
   });
 
@@ -120,7 +124,7 @@ export function AccountForm({ onSubmit, initialData, isPending }: AccountFormPro
         />
         
         <FormItem>
-          <FormLabel>Dietary Restrictions (Optional)</FormLabel>
+          <FormLabel>Dietary Restrictions</FormLabel>
           <FormDescription className="pb-2">Select any that apply to you.</FormDescription>
           <ScrollArea className={cn("h-48 rounded-md border p-4", isPending && "opacity-50 pointer-events-none")}>
              <fieldset disabled={isPending} className="space-y-3">
@@ -163,6 +167,62 @@ export function AccountForm({ onSubmit, initialData, isPending }: AccountFormPro
             </fieldset>
           </ScrollArea>
         </FormItem>
+
+        <FormField
+          control={form.control}
+          name="foodPreferences"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Food Preferences</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g., Favorite cuisines, liked/disliked foods" {...field} disabled={isPending} rows={3}/>
+              </FormControl>
+              <FormDescription>Helps us suggest meals you'll love!</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+            control={form.control}
+            name="cookingTimePreference"
+            render={({ field }) => (
+            <FormItem>
+                <FormLabel>Cooking Time Preference</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isPending}>
+                <FormControl>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Select preferred cooking time" />
+                    </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                    {cookingTimePreferences.map((time) => (
+                    <SelectItem key={time} value={time}>
+                        {time}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
+
+        <FormField
+          control={form.control}
+          name="lifestyleInfo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Lifestyle Information</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g., Busy professional, student, athlete" {...field} disabled={isPending} rows={3}/>
+              </FormControl>
+              <FormDescription>Helps us tailor suggestions to your daily routine.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <Button type="submit" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isPending}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
