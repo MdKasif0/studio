@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ReactNode } from "react";
@@ -43,21 +42,29 @@ export function AppLayout({ children }: AppLayoutProps) {
     const user = getAuthUser();
     setAuthUserLocal(user);
     setAuthChecked(true);
-  }, [pathname]);
+  }, []); // Changed dependency from [pathname] to []
 
   useEffect(() => {
-    if (authChecked && authUser) {
+    if (!authChecked) {
+      // Wait for the initial auth check to complete
+      return;
+    }
+
+    if (authUser) {
       const onboardingComplete = getOnboardingComplete(authUser.id);
       if (!onboardingComplete && pathname !== '/onboarding' && !pathname.startsWith('/sign-in')) {
         router.replace("/onboarding");
+        // setOnboardingChecked(false); // Optional: reset if redirecting, to re-evaluate on new page
       } else {
         setOnboardingChecked(true);
       }
-    } else if (authChecked && !authUser && !pathname.startsWith('/sign-in')) {
-      router.replace("/sign-in");
-    } else {
-      // If not authChecked yet, or if on sign-in/onboarding page, allow rendering
-      setOnboardingChecked(true); 
+    } else { // No authUser
+      if (!pathname.startsWith('/sign-in') && pathname !== '/onboarding' /* allow access to onboarding if directly navigated */) {
+        router.replace("/sign-in");
+      } else {
+        // On sign-in or onboarding page without auth
+        setOnboardingChecked(true);
+      }
     }
   }, [authChecked, authUser, pathname, router]);
 
@@ -66,19 +73,31 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (authUser) {
       clearUserSession(authUser.id);
     } else {
-      clearUserSession(); // Fallback if authUser state is somehow null
+      clearUserSession(); 
     }
     setAuthUserLocal(null);
+    setOnboardingChecked(false); // Reset onboarding status on logout
+    setAuthChecked(false); // Reset auth status to re-trigger checks if needed or rely on redirect
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     router.push("/sign-in");
   };
   
   // If on auth page or onboarding page, render children directly without main layout
   if (pathname.startsWith("/sign-in") || pathname.startsWith("/onboarding")) {
+     // Still show loading if initial client setup/auth check isn't done
+    if (!isClient || !authChecked) {
+      return (
+        <div className="flex flex-col min-h-screen bg-background text-foreground items-center justify-center">
+          <Leaf className="h-16 w-16 text-primary animate-pulse mb-4" />
+          <p className="text-muted-foreground">Loading Nutri AI...</p>
+        </div>
+      );
+    }
     return <>{children}</>;
   }
 
-  if (!authChecked || !onboardingChecked || (!authUser && !pathname.startsWith("/sign-in"))) {
+  // Main loading condition for authenticated routes
+  if (!isClient || !authChecked || !onboardingChecked) {
     return (
       <div className="flex flex-col min-h-screen bg-background text-foreground items-center justify-center">
         <Leaf className="h-16 w-16 text-primary animate-pulse mb-4" />
@@ -87,26 +106,16 @@ export function AppLayout({ children }: AppLayoutProps) {
     );
   }
   
-  if (!isClient) { 
-    return (
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <header className="h-14 border-b flex items-center px-6 justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Leaf className="h-8 w-8 text-primary" />
-            <h1 className="text-xl font-semibold text-foreground">Nutri AI</h1>
-          </Link>
-        </header>
-        <div className="flex flex-1">
-          <aside className="w-64 border-r p-4 hidden md:block bg-sidebar text-sidebar-foreground">
-            <Skeleton className="h-8 w-3/4 mb-4 bg-muted" />
-            <Skeleton className="h-6 w-full mb-2 bg-muted" />
-            <Skeleton className="h-6 w-full mb-2 bg-muted" />
-            <Skeleton className="h-6 w-full mb-2 bg-muted" />
-          </aside>
-          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+  // Fallback if somehow an unauthenticated user lands here without being on sign-in/onboarding
+  // This should ideally be caught by the useEffect redirect logic.
+  if (!authUser) {
+     router.replace("/sign-in"); // Should have been handled by useEffect
+     return ( // Temporary display while redirecting
+        <div className="flex flex-col min-h-screen bg-background text-foreground items-center justify-center">
+          <Leaf className="h-16 w-16 text-primary animate-pulse mb-4" />
+          <p className="text-muted-foreground">Redirecting...</p>
         </div>
-      </div>
-    );
+     );
   }
   
 
@@ -147,9 +156,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-6 backdrop-blur-md">
-          <div></div> {/* Placeholder for potential breadcrumbs or page title */}
+          <div></div> 
           <div className="flex items-center gap-2">
-            {/* User avatar/menu could go here */}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background">
