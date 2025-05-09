@@ -78,9 +78,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={geistSans.variable}>
       <body
-        className={`${geistSans.variable} font-sans antialiased`}
+        className={`font-sans antialiased`} // font-sans will use the --font-geist-sans variable
       >
         <AppProviders>
           {/* AppLayout will now conditionally render its structure based on route */}
