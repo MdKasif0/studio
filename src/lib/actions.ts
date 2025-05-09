@@ -107,10 +107,14 @@ export async function handleLogin(data: LoginFormData): Promise<{ success: boole
   console.log("Server Action: handleLogin called with", data);
   await new Promise(resolve => setTimeout(resolve, 1000)); 
 
+  const inputUsernameOrEmail = data.usernameOrEmail.toLowerCase();
+  const testUsername = "testuser";
+  const testEmail = "testuser@example.com";
+
   // Simulate database check / Firebase Auth
-  if (data.usernameOrEmail === "testuser" && data.password === "Password123!") {
+  if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
     return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
-  } else if (data.usernameOrEmail === "error@example.com") {
+  } else if (inputUsernameOrEmail === "error@example.com") {
     return { success: false, message: "Simulated server error during login." };
   } else {
     return { success: false, message: "Invalid username or password." };
@@ -129,7 +133,8 @@ export async function handleSignUp(data: SignUpFormData): Promise<{ success: boo
     return { success: false, message: "Username is already taken." };
   }
   // Simulate successful signup
-  return { success: true, message: "Account created successfully! Please log in.", user: { id: "user" + Date.now(), username: data.username, email: data.email } };
+  const newUserId = "user" + Date.now();
+  return { success: true, message: "Account created successfully! You are now logged in.", user: { id: newUserId, username: data.username, email: data.email } };
 }
 
 
