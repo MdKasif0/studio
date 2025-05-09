@@ -3,12 +3,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, X, ClipboardList, Replace, Award, Users, BookOpen, Settings, UserCog } from "lucide-react";
+import { Home, Utensils, MessageSquareHeart, BarChart3, Menu, LogOut, ClipboardList, Replace, Award, Users, BookOpen, Settings, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import React from "react";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { Separator } from "../ui/separator";
+import { Button } from "../ui/button";
 
 const mainNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -26,7 +27,11 @@ const moreNavItems = [
   { href: "/account", label: "Account", icon: UserCog },
 ];
 
-export function BottomNavigationBar() {
+interface BottomNavigationBarProps {
+  onLogout: () => void;
+}
+
+export function BottomNavigationBar({ onLogout }: BottomNavigationBarProps) {
   const pathname = usePathname();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
 
@@ -63,10 +68,10 @@ export function BottomNavigationBar() {
               More
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[75vh] rounded-t-2xl flex flex-col p-0">
+          <SheetContent side="bottom" className="h-[85vh] max-h-[600px] rounded-t-2xl flex flex-col p-0">
             <SheetHeader className="p-4 border-b border-border flex-row justify-between items-center">
               <SheetTitle className="text-lg">More Options</SheetTitle>
-              {/* Removed explicit SheetClose here as SheetContent provides one by default */}
+              {/* SheetClose is part of SheetContent by default for Radix */}
             </SheetHeader>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               <ul className="space-y-1">
@@ -96,6 +101,18 @@ export function BottomNavigationBar() {
                 </div>
                 <ThemeToggleButton />
               </div>
+               <Separator />
+                 <Button
+                    variant="ghost"
+                    className="w-full justify-start p-3 text-base text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => {
+                      onLogout();
+                      setIsSheetOpen(false);
+                    }}
+                  >
+                    <LogOut className="mr-3 h-5 w-5" />
+                    Logout
+                  </Button>
             </div>
           </SheetContent>
         </Sheet>

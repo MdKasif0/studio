@@ -1,3 +1,4 @@
+
 "use client"; // Required for useMutation and client components
 
 import React from 'react';
@@ -9,22 +10,26 @@ import { useToast } from "@/hooks/use-toast";
 import { handleLogin, handleSignUp } from "@/lib/actions";
 import type { LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useRouter } from 'next/navigation';
+import { saveAuthUser, type AuthUser } from '@/lib/authLocalStorage';
+import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
+
 
 export default function SignInPage() {
   const { toast } = useToast();
+  const router = useRouter();
 
   // Mutation for Login
   const loginMutation = useMutation({
     mutationFn: handleLogin,
     onSuccess: (data) => {
-      if (data.success) {
+      if (data.success && data.user) {
+        saveAuthUser(data.user as AuthUser); // Assuming data.user matches AuthUser structure
         toast({
           title: "Login Successful!",
           description: data.message,
         });
-        // TODO: Redirect user to dashboard or handle auth state
-        console.log("Logged in user:", data.user);
-        // router.push('/'); // Example redirect
+        router.push('/'); // Redirect to dashboard/homepage
       } else {
         toast({
           variant: "destructive",
@@ -46,13 +51,21 @@ export default function SignInPage() {
   const signUpMutation = useMutation({
     mutationFn: handleSignUp,
     onSuccess: (data) => {
-      if (data.success) {
+      if (data.success && data.user) {
+        // Save basic auth user info. Full profile details (healthGoal, restrictions)
+        // will be set up upon first visit to account page or through a dedicated onboarding step.
+        saveAuthUser(data.user as AuthUser);
+        
         toast({
           title: "Sign Up Successful!",
-          description: data.message,
+          description: data.message + " Redirecting to login...",
         });
-        // TODO: Optionally log in user automatically or prompt to log in
-        // Switch to login tab or handle state
+        // For this setup, redirect to login after sign up.
+        // Or, directly log them in and redirect to '/'
+        // For simplicity, let's redirect to login to use the login flow
+        setTimeout(() => router.push('/sign-in?tab=login'), 2000); 
+        // A better UX might auto-login and push to '/'
+        // router.push('/');
       } else {
         toast({
           variant: "destructive",
@@ -75,6 +88,11 @@ export default function SignInPage() {
   };
 
   const onSignUpSubmit = (data: SignUpFormData) => {
+    // The SignUpFormData contains more details than AuthUser.
+    // The backend `handleSignUp` should return an AuthUser compatible object.
+    // The additional details (healthGoal, restrictions) from SignUpFormData
+    // would typically be saved to a database and then fetched for `StoredUserDetails`.
+    // For now, we only save the AuthUser part from the response.
     signUpMutation.mutate(data);
   };
 

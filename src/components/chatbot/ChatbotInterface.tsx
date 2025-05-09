@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { NutritionChatbotInput, NutritionChatbotOutput } from "@/ai/flows/nutrition-chatbot-flow";
@@ -8,31 +9,49 @@ import { handleChatbotInteraction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { CornerDownLeft, Loader2, User, Bot } from "lucide-react";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAuthUser, saveChatHistory, getChatHistory, type ChatMessage, type AuthUser } from "@/lib/authLocalStorage";
 
-interface Message {
-  id: string;
-  role: "user" | "model";
-  content: string;
-  suggestions?: string[];
-}
+// Ensure ChatMessage type here matches the one in authLocalStorage.ts if used directly
+// For this example, ChatMessage defined in authLocalStorage.ts will be the source of truth.
 
 export function ChatbotInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "initial", role: "model", content: "Hello! I'm NutriCoach AI. How can I help you with your nutrition today?" }
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: "initial", role: "model", content: "Hello! I'm Nutri AI. How can I help you with your nutrition today?" }
   ]);
   const [inputValue, setInputValue] = useState("");
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const user = getAuthUser();
+    setAuthUser(user);
+    if (user) {
+      const storedHistory = getChatHistory(user.id);
+      if (storedHistory && storedHistory.length > 0) {
+        setMessages(storedHistory);
+      }
+    }
+  }, []);
+
   const mutation = useMutation<NutritionChatbotOutput, Error, NutritionChatbotInput>({
     mutationFn: handleChatbotInteraction,
     onSuccess: (data, variables) => {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: Date.now().toString() + "-ai", role: "model", content: data.reply, suggestions: data.suggestions },
-      ]);
+      const newAiMessage: ChatMessage = { 
+        id: Date.now().toString() + "-ai", 
+        role: "model", 
+        content: data.reply, 
+        suggestions: data.suggestions 
+      };
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, newAiMessage];
+        if (authUser) {
+          saveChatHistory(authUser.id, updatedMessages);
+        }
+        return updatedMessages;
+      });
     },
     onError: (error) => {
       toast({
@@ -40,29 +59,46 @@ export function ChatbotInterface() {
         title: "Chatbot Error",
         description: error.message || "Could not get a response from the assistant.",
       });
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: Date.now().toString() + "-error", role: "model", content: "Sorry, I encountered an error. Please try again." },
-      ]);
+      const errorAiMessage: ChatMessage = {
+         id: Date.now().toString() + "-error", 
+         role: "model", 
+         content: "Sorry, I encountered an error. Please try again." 
+      };
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, errorAiMessage];
+         if (authUser) {
+          saveChatHistory(authUser.id, updatedMessages);
+        }
+        return updatedMessages;
+      });
     },
   });
 
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>, suggestion?: string) => {
     e?.preventDefault();
-    const currentMessage = suggestion || inputValue.trim();
-    if (!currentMessage) return;
+    if (!authUser) {
+      toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to use the chatbot." });
+      return;
+    }
+    const currentMessageContent = suggestion || inputValue.trim();
+    if (!currentMessageContent) return;
 
-    const newUserMessage: Message = { id: Date.now().toString(), role: "user", content: currentMessage };
-    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+    const newUserMessage: ChatMessage = { id: Date.now().toString(), role: "user", content: currentMessageContent };
     
-    const chatHistory = messages.map(m => ({role: m.role, content: m.content}));
+    const updatedMessagesWithUser = [...messages, newUserMessage];
+    setMessages(updatedMessagesWithUser);
+    if (authUser) {
+        saveChatHistory(authUser.id, updatedMessagesWithUser);
+    }
+    
+    const chatHistoryForApi = updatedMessagesWithUser.map(m => ({role: m.role, content: m.content}));
 
     // For now, userProfile is static. In a real app, this would come from user state/context.
     const userProfile = {
-        healthGoals: "General wellness", // Example
+        healthGoals: "General wellness", // Example, fetch from StoredUserDetails if available
     };
 
-    mutation.mutate({ message: currentMessage, history: chatHistory, userProfile });
+    mutation.mutate({ message: currentMessageContent, history: chatHistoryForApi, userProfile });
     setInputValue("");
   };
 
@@ -152,10 +188,10 @@ export function ChatbotInterface() {
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask me anything about nutrition..."
           className="flex-grow"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || !authUser}
           aria-label="Chat message input"
         />
-        <Button type="submit" size="icon" disabled={mutation.isPending || !inputValue.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button type="submit" size="icon" disabled={mutation.isPending || !inputValue.trim() || !authUser} className="bg-accent hover:bg-accent/90 text-accent-foreground">
           {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
           <span className="sr-only">Send message</span>
         </Button>

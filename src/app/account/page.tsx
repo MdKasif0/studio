@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMutation } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2 } from "lucide-react"; // Added Loader2
+import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut } from "lucide-react";
 import { AccountForm } from "@/components/account/AccountForm";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import type { AccountSettingsFormData, ChangePasswordFormData } from "@/lib/schemas/authSchemas";
@@ -24,61 +24,88 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle to avoid conflict
+import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-// import type { Metadata } from "next"; // Not used directly in client component
-
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Account Settings - Manage Your Profile | Nutri AI",
-//   description: "Manage your Nutri AI profile, dietary preferences, login credentials, and app settings.",
-//   robots: { // Specific robots directive for this page
-//     index: false, // Do not index account settings
-//     follow: false,
-//   },
-// };
+import { getAuthUser, saveUserDetails, getUserDetails, clearUserSession, type StoredUserDetails, type AuthUser } from '@/lib/authLocalStorage';
+import { useRouter } from 'next/navigation';
 
 
 export default function AccountPage() {
   const { toast } = useToast();
-  const [profilePic, setProfilePic] = useState<string>("https://picsum.photos/seed/profile/200/200");
+  const router = useRouter();
+  
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [userDetails, setUserDetails] = useState<StoredUserDetails | null>(null);
+  
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Simulate fetching user data - in a real app, this would come from auth context or API
-  const [currentUser, setCurrentUser] = useState<AccountSettingsFormData | undefined>(undefined);
-
-  useEffect(() => {
-    // Simulate fetching current user data
-    setTimeout(() => {
-      setCurrentUser({
-        username: "NutriUser123",
-        email: "user@example.com",
-        primaryHealthGoal: "Improve Overall Health",
-        dietaryRestrictions: {
-          glutenFree: false,
-          dairyFree: true,
-          vegetarian: false,
-          vegan: false,
-          nutAllergy: false,
-          shellfishAllergy: false,
-          soyAllergy: false,
-          lowCarb: false,
-          keto: false,
-          paleo: false,
-          lowFodmap: false,
-          other: "No spicy food",
-        },
-      });
-    }, 500);
+  const loadDataFromLocalStorage = useCallback(() => {
+    const currentAuthUser = getAuthUser();
+    setAuthUser(currentAuthUser);
+    if (currentAuthUser) {
+      const storedDetails = getUserDetails(currentAuthUser.id);
+      if (storedDetails) {
+        setUserDetails(storedDetails);
+      } else {
+        // Initialize with defaults if no details found, using authUser for username/email
+        setUserDetails({
+          primaryHealthGoal: "Improve Overall Health", // Default or fetch from a default profile
+          dietaryRestrictions: { /* defaults */ },
+          profilePictureDataUrl: "https://picsum.photos/seed/profile/200/200"
+        });
+      }
+    }
+    setIsLoadingData(false);
   }, []);
 
+  useEffect(() => {
+    loadDataFromLocalStorage();
+  }, [loadDataFromLocalStorage]);
+
+
+  const combinedUserDataForForm = React.useMemo(() => {
+    if (!authUser) return undefined;
+    return {
+      username: authUser.username,
+      email: authUser.email,
+      primaryHealthGoal: userDetails?.primaryHealthGoal || "Improve Overall Health",
+      dietaryRestrictions: userDetails?.dietaryRestrictions || {
+          glutenFree: false, dairyFree: false, vegetarian: false, vegan: false,
+          nutAllergy: false, shellfishAllergy: false, soyAllergy: false,
+          lowCarb: false, keto: false, paleo: false, lowFodmap: false, other: "",
+      },
+    } as AccountSettingsFormData;
+  }, [authUser, userDetails]);
+
+
   const profileUpdateMutation = useMutation({
-    mutationFn: handleAccountUpdate,
-    onSuccess: (response, variables) => {
-      if (response.success) {
-        setCurrentUser(variables); // Update local state with the data sent to mutation
+    mutationFn: handleAccountUpdate, // This is a server action
+    onSuccess: (response, submittedData) => {
+      if (response.success && authUser) {
+        // Update AuthUser if username/email changed (though typically email is fixed or special flow)
+        // For this example, username from submittedData updates authUser
+        const updatedAuthUser = { ...authUser, username: submittedData.username, email: submittedData.email };
+        // saveAuthUser(updatedAuthUser); // Be careful with email changes, usually needs verification.
+        // For now, let's assume email is not changed or handled by a separate flow.
+        // We'll update username in AuthUser for consistency if it changes.
+        if (authUser.username !== submittedData.username) {
+            saveAuthUser({...authUser, username: submittedData.username });
+            setAuthUser(prev => prev ? {...prev, username: submittedData.username} : null);
+        }
+
+
+        const newDetails: StoredUserDetails = {
+          primaryHealthGoal: submittedData.primaryHealthGoal,
+          dietaryRestrictions: submittedData.dietaryRestrictions,
+          profilePictureDataUrl: userDetails?.profilePictureDataUrl, // Keep existing pic
+        };
+        saveUserDetails(authUser.id, newDetails);
+        setUserDetails(newDetails);
+        
         toast({
           title: "Profile Updated",
           description: response.message,
@@ -118,16 +145,16 @@ export default function AccountPage() {
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: handleDeleteAccountAction,
+    mutationFn: handleDeleteAccountAction, // Needs userId, but mock action doesn't use it yet
     onSuccess: (response) => {
       toast({
         title: response.success ? "Account Deletion Initiated" : "Deletion Failed",
         description: response.message,
         variant: response.success ? "default" : "destructive",
       });
-      if (response.success) {
-        // TODO: Log user out, redirect to home/login page
-        console.log("User account deleted. Implement logout and redirect.");
+      if (response.success && authUser) {
+        clearUserSession(authUser.id);
+        router.push("/sign-in");
       }
     },
     onError: (error: Error) => {
@@ -154,21 +181,25 @@ export default function AccountPage() {
 
   const handleProfilePicChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && authUser) {
       setIsUploading(true);
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Simulate upload
+        const newProfilePicDataUrl = reader.result as string;
+        // Simulate upload delay if desired, then save to local storage
         setTimeout(() => {
-          setProfilePic(reader.result as string);
+          const updatedDetails: StoredUserDetails = {
+            ...(userDetails || { primaryHealthGoal: "Improve Overall Health", dietaryRestrictions: {} }), // Ensure userDetails is not null
+            profilePictureDataUrl: newProfilePicDataUrl,
+          };
+          saveUserDetails(authUser.id, updatedDetails);
+          setUserDetails(updatedDetails);
           setIsUploading(false);
           toast({
             title: "Profile Picture Updated",
-            description: "Your new profile picture has been set (simulation).",
+            description: "Your new profile picture has been set.",
           });
-          // In a real app, call a server action here:
-          // profilePicUploadMutation.mutate({imageDataUrl: reader.result as string})
-        }, 1500);
+        }, 1000); // Simulate upload
       };
       reader.readAsDataURL(file);
     }
@@ -178,7 +209,7 @@ export default function AccountPage() {
     fileInputRef.current?.click();
   };
 
-  if (!currentUser) {
+  if (isLoadingData || !authUser || !combinedUserDataForForm) {
     return (
       <div className="container mx-auto py-8 text-center">
         <User className="mx-auto h-16 w-16 text-accent mb-4 animate-pulse" />
@@ -186,7 +217,6 @@ export default function AccountPage() {
       </div>
     );
   }
-
 
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8">
@@ -202,9 +232,9 @@ export default function AccountPage() {
         <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6">
           <div className="relative group">
             <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary group-hover:opacity-80 transition-opacity">
-              <AvatarImage src={profilePic} alt="User profile picture" data-ai-hint="profile avatar" />
+              <AvatarImage src={userDetails?.profilePictureDataUrl || "https://picsum.photos/seed/profile/200/200"} alt="User profile picture" data-ai-hint="profile avatar" />
               <AvatarFallback className="text-4xl">
-                {currentUser.username ? currentUser.username.substring(0, 2).toUpperCase() : 'U'}
+                {authUser.username ? authUser.username.substring(0, 2).toUpperCase() : 'U'}
               </AvatarFallback>
             </Avatar>
             <Button
@@ -227,9 +257,9 @@ export default function AccountPage() {
             />
           </div>
           <div className="text-center md:text-left">
-            <h2 className="text-2xl font-semibold text-foreground">{currentUser.username}</h2>
-            <p className="text-muted-foreground">{currentUser.email}</p>
-            <p className="text-sm text-primary mt-1">{currentUser.primaryHealthGoal}</p>
+            <h2 className="text-2xl font-semibold text-foreground">{authUser.username}</h2>
+            <p className="text-muted-foreground">{authUser.email}</p>
+            <p className="text-sm text-primary mt-1">{userDetails?.primaryHealthGoal}</p>
           </div>
         </CardContent>
       </Card>
@@ -251,7 +281,7 @@ export default function AccountPage() {
           )}
           <AccountForm 
             onSubmit={onProfileSubmit} 
-            initialData={currentUser} 
+            initialData={combinedUserDataForForm} 
             isPending={profileUpdateMutation.isPending} 
           />
         </CardContent>
@@ -329,7 +359,7 @@ export default function AccountPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                  This action cannot be undone. This will permanently delete your account and remove your data from our servers (simulated for local storage).
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -352,7 +382,6 @@ export default function AccountPage() {
           </p>
         </CardContent>
       </Card>
-
     </div>
   );
 }
