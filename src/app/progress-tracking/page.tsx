@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -10,6 +11,12 @@ import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { handleLogSymptom } from "@/lib/actions";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
+// import type { Metadata } from "next"; // Not used directly in client component
+
+// export const metadata: Metadata = { // This won't work directly in a "use client" component.
+//   title: "Progress & Symptom Tracking | Nutri AI",
+//   description: "Track your nutritional progress, log post-meal symptoms, and visualize your achievements with Nutri AI. (Not a medical tool).",
+// };
 
 export default function ProgressTrackingPage() {
   const { toast } = useToast();

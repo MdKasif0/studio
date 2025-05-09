@@ -4,6 +4,22 @@ import { BookOpen, Youtube, Lightbulb, CookingPot, HelpingHand } from "lucide-re
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Learn Nutrition - Articles, Guides & Support | Nutri AI",
+  description: "Expand your nutrition knowledge with Nutri AI's educational resources. Explore articles, videos, guides, recipes, and future premium consultation options.",
+  keywords: ["nutrition education", "health articles", "cooking guides", "diet tips", "mindful eating", "Nutri AI learn"],
+  openGraph: {
+    title: "Nutri AI Knowledge & Support Hub",
+    description: "Learn about nutrition, cooking, and healthy habits with our resources.",
+    url: "https://example.com/learn", // Replace with your actual domain
+  },
+  twitter: {
+    title: "Nutri AI Knowledge & Support Hub",
+    description: "Explore educational content on nutrition and wellness.",
+  },
+};
 
 
 export default function LearnPage() {
@@ -71,16 +87,17 @@ export default function LearnPage() {
             <div className="relative h-40 md:h-48 w-full">
               <Image
                 src={resource.image}
-                alt={resource.title}
+                alt={`Visual for ${resource.title}`}
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover"
                 data-ai-hint={resource.aiHint}
+                priority={index < 3} // Prioritize first few resource images
               />
             </div>
             <CardHeader className="p-4">
               <div className="flex items-start gap-2 md:gap-3 mb-1 md:mb-2">
-                <resource.icon className="h-6 w-6 md:h-7 md:w-7 text-primary mt-1" />
+                <resource.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-primary mt-1" />
                 <div>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{resource.type}</p>
                   <CardTitle className="text-lg md:text-xl leading-tight">{resource.title}</CardTitle>
@@ -110,4 +127,3 @@ export default function LearnPage() {
     </div>
   );
 }
-

@@ -4,6 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Award, Flame, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Nutrition Challenges & Achievements | Nutri AI",
+  description: "Stay motivated with Nutri AI! Complete nutrition challenges, earn points, unlock badges, and build healthy habits.",
+  keywords: ["nutrition challenges", "health achievements", "gamification", "healthy habits", "motivation", "Nutri AI"],
+  openGraph: {
+    title: "Take on Nutrition Challenges with Nutri AI",
+    description: "Earn points and badges by completing fun and healthy challenges.",
+    url: "https://example.com/challenges", // Replace with your actual domain
+  },
+  twitter: {
+    title: "Nutrition Challenges & Achievements | Nutri AI",
+    description: "Get motivated and track your health milestones.",
+  },
+};
 
 export default function ChallengesPage() {
   const challenges = [
@@ -46,8 +62,8 @@ export default function ChallengesPage() {
         </p>
       </header>
 
-      <section className="mb-8 md:mb-12">
-        <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Your Progress</h2>
+      <section aria-labelledby="progress-heading" className="mb-8 md:mb-12">
+        <h2 id="progress-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Your Progress</h2>
         <Card className="shadow-lg">
           <CardContent className="p-4 md:p-6 flex flex-col sm:flex-row justify-around items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <div className="text-center">
@@ -66,19 +82,20 @@ export default function ChallengesPage() {
         </Card>
       </section>
 
-      <section>
-        <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Available Challenges</h2>
+      <section aria-labelledby="available-challenges-heading">
+        <h2 id="available-challenges-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Available Challenges</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {challenges.map((challenge, index) => (
             <Card key={index} className="shadow-xl overflow-hidden flex flex-col">
               <div className="relative h-32 md:h-40 w-full">
                 <Image
                   src={challenge.image}
-                  alt={challenge.title}
-                  fill // Changed from layout="fill" to fill for Next 13+ Image
+                  alt={`Image for ${challenge.title} challenge`}
+                  fill 
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover" // Changed from objectFit="cover"
+                  className="object-cover" 
                   data-ai-hint={challenge.aiHint}
+                  priority={index < 2} // Prioritize first few challenge images
                 />
                 {challenge.status === "locked" && (
                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -89,7 +106,7 @@ export default function ChallengesPage() {
               <CardHeader className="pb-2 pt-3 px-4">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg md:text-xl">{challenge.title}</CardTitle>
-                  <challenge.badgeIcon className={`h-6 w-6 md:h-7 md:w-7 ${challenge.status === "active" ? "text-accent" : "text-muted"}`} />
+                  <challenge.badgeIcon aria-hidden="true" className={`h-6 w-6 md:h-7 md:w-7 ${challenge.status === "active" ? "text-accent" : "text-muted"}`} />
                 </div>
                 <CardDescription className="h-12 md:h-16 text-xs md:text-sm">{challenge.description}</CardDescription>
               </CardHeader>

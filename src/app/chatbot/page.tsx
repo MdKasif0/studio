@@ -2,6 +2,13 @@
 import { ChatbotInterface } from "@/components/chatbot/ChatbotInterface";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquareHeart } from "lucide-react";
+// import type { Metadata } from "next"; // Not used directly in client component (page is client)
+
+// export const metadata: Metadata = { // This won't work directly in a "use client" component.
+//   title: "Nutri AI Assistant - Your Nutrition Chatbot | Nutri AI",
+//   description: "Chat with Nutri AI's intelligent assistant for nutrition questions, app guidance, and daily motivation on your health journey.",
+// };
+
 
 export default function ChatbotPage() {
   return (
@@ -32,4 +39,3 @@ export default function ChatbotPage() {
     </div>
   );
 }
-

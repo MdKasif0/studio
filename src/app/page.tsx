@@ -4,6 +4,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Nutri AI - AI-Powered Personalized Nutrition Coach",
+  description: "Achieve your health goals with Nutri AI. Get personalized dietary analysis, custom meal plans, AI chatbot support, and track your progress.",
+  keywords: ["nutrition", "ai coach", "meal plan", "dietary analysis", "health", "fitness", "personalized nutrition"],
+  openGraph: {
+    title: "Nutri AI - AI-Powered Personalized Nutrition Coach",
+    description: "Your intelligent partner for highly personalized nutrition.",
+    type: "website",
+    url: "https://example.com/", // Replace with your actual domain
+    images: [
+      {
+        url: "https://example.com/og-image.png", // Replace with your actual OG image URL
+        width: 1200,
+        height: 630,
+        alt: "Nutri AI Dashboard Preview",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nutri AI - AI-Powered Personalized Nutrition Coach",
+    description: "Achieve your health goals with Nutri AI's personalized guidance.",
+    // images: ["https://example.com/twitter-image.png"], // Replace with your actual Twitter image URL
+  },
+};
+
 
 export default function HomePage() {
   const features = [
@@ -134,14 +162,14 @@ export default function HomePage() {
       </header>
 
       {/* At-a-Glance Dashboard Section */}
-      <section className="w-full max-w-7xl px-2 sm:px-0">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
+      <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0">
+        <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {dashboardSnippets.map((snippet) => (
             <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-1">
-                  <snippet.icon className="h-6 w-6 md:h-7 md:w-7 text-accent" />
+                  <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent" />
                   <CardTitle className="text-lg md:text-xl">{snippet.title}</CardTitle>
                 </div>
                 <CardDescription className="text-card-foreground/80 h-16 text-sm">
@@ -152,7 +180,7 @@ export default function HomePage() {
                 <Link href={snippet.link} passHref>
                   <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
                     {snippet.cta}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </CardContent>
@@ -165,24 +193,25 @@ export default function HomePage() {
       </section>
 
       {/* Features Grid */}
-      <section className="w-full max-w-7xl px-2 sm:px-0">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
+      <section aria-labelledby="features-heading" className="w-full max-w-7xl px-2 sm:px-0">
+        <h2 id="features-heading" className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {features.map((feature) => (
             <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
               <div className="relative h-40 md:h-48 w-full">
                 <Image
                   src={feature.image}
-                  alt={feature.title}
+                  alt={`${feature.title} visual representation`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   data-ai-hint={feature.aiHint}
+                  priority={features.indexOf(feature) < 3} // Prioritize loading images for first few features
                 />
               </div>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-2">
-                  <feature.icon className="h-7 w-7 md:h-8 md:w-8 text-accent" />
+                  <feature.icon aria-hidden="true" className="h-7 w-7 md:h-8 md:w-8 text-accent" />
                   <CardTitle className="text-xl md:text-2xl">{feature.title}</CardTitle>
                 </div>
                 <CardDescription className="text-card-foreground/80 h-20 md:h-24 text-sm">
@@ -193,7 +222,7 @@ export default function HomePage() {
                 <Link href={feature.link} passHref>
                   <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-sm md:text-base">
                     {feature.cta}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </CardContent>
@@ -202,8 +231,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0">
-        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How Nutri AI Elevates Your Journey</h2>
+      <section aria-labelledby="how-it-works-heading" className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0">
+        <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How Nutri AI Elevates Your Journey</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-left">
           <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
             <h3 className="text-lg md:text-xl font-medium mb-2 text-primary">1. Deeply Personalize</h3>
@@ -222,5 +251,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -26,6 +27,16 @@ import {
 import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle to avoid conflict
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+// import type { Metadata } from "next"; // Not used directly in client component
+
+// export const metadata: Metadata = { // This won't work directly in a "use client" component.
+//   title: "Account Settings - Manage Your Profile | Nutri AI",
+//   description: "Manage your Nutri AI profile, dietary preferences, login credentials, and app settings.",
+//   robots: { // Specific robots directive for this page
+//     index: false, // Do not index account settings
+//     follow: false,
+//   },
+// };
 
 
 export default function AccountPage() {

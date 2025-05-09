@@ -5,6 +5,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, MessageCircle, ThumbsUp, PlusCircle, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Nutri AI Community Hub - Connect & Share",
+  description: "Join the Nutri AI community. Share recipes, success stories, find support, and participate in group challenges with fellow health enthusiasts.",
+  keywords: ["nutrition community", "health forum", "diet support group", "recipe sharing", "Nutri AI community"],
+  openGraph: {
+    title: "Join the Nutri AI Community Hub",
+    description: "Connect, share, and get inspired with fellow health enthusiasts.",
+    url: "https://example.com/community", // Replace with your actual domain
+  },
+  twitter: {
+    title: "Nutri AI Community: Connect & Share",
+    description: "Be part of our supportive health and nutrition community.",
+  },
+};
 
 export default function CommunityPage() {
   const trendingPosts = [
@@ -53,8 +69,8 @@ export default function CommunityPage() {
         </Button>
       </header>
 
-      <section className="mb-8 md:mb-12">
-        <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary flex items-center">
+      <section aria-labelledby="trending-discussions-heading" className="mb-8 md:mb-12">
+        <h2 id="trending-discussions-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary flex items-center">
           <TrendingUp className="mr-2 h-5 w-5 md:h-6 md:w-6" /> Trending Discussions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -64,18 +80,19 @@ export default function CommunityPage() {
                 <div className="relative h-40 md:h-48 w-full">
                   <Image
                     src={post.image}
-                    alt={post.title}
+                    alt={`Image for community post: ${post.title}`}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
                     data-ai-hint={post.imageAiHint}
+                    priority={post.id <= 2} // Prioritize first few post images
                   />
                 </div>
               )}
               <CardHeader className="p-4">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-2">
                   <Avatar className="h-8 w-8 md:h-10 md:w-10">
-                    <AvatarImage src={post.avatar} alt={post.user} data-ai-hint={post.aiHint} />
+                    <AvatarImage src={post.avatar} alt={`${post.user}'s avatar`} data-ai-hint={post.aiHint} />
                     <AvatarFallback>{post.user.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -99,14 +116,14 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Active Groups</h2>
+      <section aria-labelledby="active-groups-heading">
+        <h2 id="active-groups-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Active Groups</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {activeGroups.map((group) => (
             <Card key={group.id} className="shadow-lg text-center">
               <CardContent className="p-4 md:p-6">
                 <Avatar className="h-16 w-16 md:h-20 md:w-20 mx-auto mb-3 md:mb-4">
-                  <AvatarImage src={group.image} alt={group.name} data-ai-hint={group.aiHint}/>
+                  <AvatarImage src={group.image} alt={`Logo for ${group.name} group`} data-ai-hint={group.aiHint}/>
                   <AvatarFallback>{group.name.substring(0,1)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-md md:text-lg font-medium text-foreground">{group.name}</h3>
@@ -125,4 +142,3 @@ export default function CommunityPage() {
     </div>
   );
 }
-

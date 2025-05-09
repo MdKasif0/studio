@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow access to authentication and account management pages for most crawlers
+Disallow: /sign-in
+Disallow: /account
+
+# Allow access to API routes if you have public-facing APIs, otherwise disallow
+# Disallow: /api/
+
+# Sitemap location (replace with your actual domain)
+Sitemap: https://example.com/sitemap.xml
