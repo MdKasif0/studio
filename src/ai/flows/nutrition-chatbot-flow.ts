@@ -93,7 +93,7 @@ const nutritionChatbotFlow = ai.defineFlow(
   },
   async (input) => {
     const llmResponse = await prompt(input);
-    const output = llmResponse.output();
+    const output = llmResponse.output; // Corrected from llmResponse.output()
 
     if (!output) {
       return { reply: "I'm having a little trouble understanding that. Could you try rephrasing?" };
