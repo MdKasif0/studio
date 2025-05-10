@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -48,7 +47,7 @@ export default function HomePage() {
 
 
   useEffect(() => {
-    if (!authUser || showOnboarding) { // Don't fetch dashboard data if not authenticated or onboarding is active
+    if (!authUser || showOnboarding) { 
       setIsLoadingDashboard(false);
       setDashboardData(null);
       return;
@@ -59,7 +58,7 @@ export default function HomePage() {
       const cachedData = getHomeDashboardData(authUser.id);
       const now = new Date().getTime();
 
-      if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { // 15 minute cache
+      if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
         setIsLoadingDashboard(false);
         return;
@@ -67,11 +66,10 @@ export default function HomePage() {
 
       try {
         const userApiKey = getApiKey(authUser.id);
-        // Fetch userDetails again inside this async function to ensure freshness
         const currentLocalUserDetails = getUserDetails(authUser.id);
-        // Update userDetails state if it's different, though it's primarily used for input construction here
+        
         if (JSON.stringify(currentLocalUserDetails) !== JSON.stringify(userDetails)) {
-          setUserDetails(currentLocalUserDetails);
+          setUserDetails(currentLocalUserDetails); 
         }
 
 
@@ -81,9 +79,9 @@ export default function HomePage() {
             healthGoals: currentLocalUserDetails?.primaryHealthGoal || "general wellness",
             dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ?
               Object.entries(currentLocalUserDetails.dietaryRestrictions)
-                    .filter(([, value]) => value === true || (typeof value === 'string' && value.length > 0)) // Handle 'other' string
-                    .map(([key, value]) => key === 'other' ? value : key)
-                    .filter(Boolean) // remove any empty strings that might result from 'other'
+                    .filter(([, value]) => value === true || (typeof value === 'string' && value.length > 0)) 
+                    .map(([key, value]) => key === 'other' && typeof value === 'string' ? value : key)
+                    .filter(Boolean) 
                     .join(', ')
               : "none",
           },
@@ -91,7 +89,6 @@ export default function HomePage() {
           ...(userApiKey && { apiKey: userApiKey }),
         };
         
-        // Ensure dietaryRestrictions is not empty if it was constructed to be empty
         if (!input.userProfile.dietaryRestrictions) {
             input.userProfile.dietaryRestrictions = "none";
         }
@@ -102,15 +99,16 @@ export default function HomePage() {
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         const errorMessage = error instanceof Error ? error.message : "Could not load dashboard data. The AI assistant might be unavailable.";
-        // Only show toast if it's a new error, not for subsequent renders
-        if (!dashboardData && !isLoadingDashboard) { // Avoid spamming toasts
-             toast({
-                variant: "destructive",
-                title: "Dashboard Error",
-                description: errorMessage,
-            });
-        }
-        // Fallback to stale cache on error if available, otherwise null
+        
+        // Check if already loading or if dashboard data is already set to avoid spamming toasts
+        // This logic was simplified as it was too complex and potentially causing issues.
+        // The toast will now show if an error occurs during fetch.
+        toast({
+            variant: "destructive",
+            title: "Dashboard Error",
+            description: errorMessage,
+        });
+        
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -118,17 +116,16 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [authUser, toast, showOnboarding, userDetails, isLoadingDashboard, dashboardData]); // Added dependencies
+  }, [authUser, showOnboarding, userDetails, toast]); // Corrected dependency array
 
   const handleOnboardingComplete = () => {
     if (authUser) {
       localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
     }
     setShowOnboarding(false);
-    // Optionally, refetch user details if onboarding updated them
     if(authUser) {
         const details = getUserDetails(authUser.id);
-        setUserDetails(details); // This will trigger the dashboard data fetch effect
+        setUserDetails(details); 
     }
   };
 
