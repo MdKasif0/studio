@@ -1,26 +1,32 @@
 
+"use client"; // Add "use client" to make this a Client Component
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Award, Flame, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { ChallengeCard } from "@/components/challenges/ChallengeCard"; // Import the new component
+import { ChallengeCard } from "@/components/challenges/ChallengeCard";
 
-export const metadata: Metadata = {
-  title: "Nutrition Challenges & Achievements | Nutri AI",
-  description: "Stay motivated with Nutri AI! Complete nutrition challenges, earn points, unlock badges, and build healthy habits.",
-  keywords: ["nutrition challenges", "health achievements", "gamification", "healthy habits", "motivation", "Nutri AI"],
-  openGraph: {
-    title: "Take on Nutrition Challenges with Nutri AI",
-    description: "Earn points and badges by completing fun and healthy challenges.",
-    url: "https://example.com/challenges", // Replace with your actual domain
-  },
-  twitter: {
-    title: "Nutrition Challenges & Achievements | Nutri AI",
-    description: "Get motivated and track your health milestones.",
-  },
-};
+// Metadata should be defined outside the component if it's a client component,
+// or handled in a parent layout. For a page component marked "use client",
+// metadata export might not work as expected for static generation.
+// However, Netlify error is about prerendering, let's see if "use client" alone fixes it.
+// export const metadata: Metadata = {
+//   title: "Nutrition Challenges & Achievements | Nutri AI",
+//   description: "Stay motivated with Nutri AI! Complete nutrition challenges, earn points, unlock badges, and build healthy habits.",
+//   keywords: ["nutrition challenges", "health achievements", "gamification", "healthy habits", "motivation", "Nutri AI"],
+//   openGraph: {
+//     title: "Take on Nutrition Challenges with Nutri AI",
+//     description: "Earn points and badges by completing fun and healthy challenges.",
+//     url: "https://example.com/challenges", // Replace with your actual domain
+//   },
+//   twitter: {
+//     title: "Nutrition Challenges & Achievements | Nutri AI",
+//     description: "Get motivated and track your health milestones.",
+//   },
+// };
 
 export default function ChallengesPage() {
   const challenges = [
