@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { handleChatbotInteraction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { CornerDownLeft, Loader2, User, Bot, PlusCircle, Trash2, History, X, Pin, PinOff, Settings, Send, Volume2, FileDown, Edit3, ThumbsUp, ThumbsDown } from "lucide-react";
+import { CornerDownLeft, Loader2, User, Bot, PlusCircle, Trash2, History, X, Pin, PinOff, Settings, Send, Volume2, FileDown, Edit3, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -39,7 +39,7 @@ import {
   type ChatFeedback,
   getUserDetails,
   getApiKey,
-  saveMessageReaction,
+  saveMessageReaction, // Correctly imported
 } from "@/lib/authLocalStorage";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, parseISO } from 'date-fns';
@@ -68,6 +68,8 @@ export function ChatbotInterface() {
   const [feedbackText, setFeedbackText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
 
   const { toast } = useToast();
@@ -97,6 +99,7 @@ export function ChatbotInterface() {
     removeChatDraft(authUser.id, newChatId);
     setChatSessions(getAllChatSessions(authUser.id));
     setActiveChatId(authUser.id, newChatId);
+    setImagePreview(null);
     if (userInitiated) toast({ title: "New Chat Started" });
   }, [authUser, currentPersona, toast]);
 
@@ -118,7 +121,7 @@ export function ChatbotInterface() {
         const session = getChatSession(authUser.id, lastActiveId);
         if (session) {
           setActiveChatSessionId(lastActiveId);
-          setMessages(session.messages);
+          setMessages(session.messages.map(m => ({...m, reaction: session.messages.find(storedMsg => storedMsg.id === m.id)?.reaction}))); // Load reactions
           setInputValue(getChatDraft(authUser.id, lastActiveId) || "");
         } else {
           removeActiveChatId(authUser.id); 
@@ -202,11 +205,12 @@ export function ChatbotInterface() {
     const session = getChatSession(authUser.id, sessionId);
     if (session) {
       setActiveChatSessionId(sessionId);
-      setMessages(session.messages);
+      setMessages(session.messages.map(m => ({...m, reaction: session.messages.find(storedMsg => storedMsg.id === m.id)?.reaction})));
       setInputValue(getChatDraft(authUser.id, sessionId) || "");
       setActiveChatId(authUser.id, sessionId);
       setIsHistoryPanelOpen(false); 
       setEditingMessageId(null);
+      setImagePreview(null);
     } else {
       toast({ variant: "destructive", title: "Error", description: "Chat session not found." });
       startNewChat(false); 
@@ -244,9 +248,23 @@ export function ChatbotInterface() {
       return;
     }
     const currentMessageContent = suggestion || inputValue.trim();
-    if (!currentMessageContent) return;
+    if (!currentMessageContent && !imagePreview) {
+      toast({variant: "destructive", title: "Empty message", description: "Please type a message or select an image."})
+      return;
+    }
 
-    const newUserMessage: ChatMessage = { id: Date.now().toString(), role: "user", content: currentMessageContent, timestamp: new Date().toISOString() };
+    let messageToSend = currentMessageContent;
+    if(imagePreview){
+        messageToSend = `[User uploaded an image. Describe it or analyze its nutritional content if appropriate. Image URI: ${imagePreview}] ${currentMessageContent}`;
+    }
+
+
+    const newUserMessage: ChatMessage = { 
+        id: Date.now().toString(), 
+        role: "user", 
+        content: messageToSend, 
+        timestamp: new Date().toISOString() 
+    };
     
     const updatedMessagesWithUser = [...messages, newUserMessage];
     setMessages(updatedMessagesWithUser);
@@ -273,7 +291,7 @@ export function ChatbotInterface() {
 
     mutation.mutate({ 
       userId: authUser.id,
-      message: currentMessageContent, 
+      message: messageToSend, 
       history: chatHistoryForApi.slice(-10), 
       userProfile: userProfileForApi,
       ...(userApiKey && { apiKey: userApiKey }),
@@ -281,6 +299,8 @@ export function ChatbotInterface() {
     });
     setInputValue("");
     removeChatDraft(authUser.id, activeChatSessionId);
+    setImagePreview(null); 
+    if(imageInputRef.current) imageInputRef.current.value = "";
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -408,15 +428,34 @@ export function ChatbotInterface() {
     toast({title: "Message Edited", description: "Resubmitting to AI..."})
   };
 
-  const handleReaction = (messageId: string, reaction: 'like' | 'dislike') => {
+  const handleReaction = (messageId: string, reactionType: 'like' | 'dislike') => {
     if(!authUser || !activeChatSessionId) return;
+
+    const currentMessage = messages.find(m => m.id === messageId);
+    const newReaction = currentMessage?.reaction === reactionType ? undefined : reactionType;
 
     setMessages(prevMessages => 
         prevMessages.map(msg => 
-            msg.id === messageId ? {...msg, reaction: msg.reaction === reaction ? undefined : reaction} : msg
+            msg.id === messageId ? {...msg, reaction: newReaction} : msg
         )
     );
-    saveMessageReaction(authUser.id, activeChatSessionId, messageId, reaction);
+    saveMessageReaction(authUser.id, activeChatSessionId, messageId, newReaction);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({variant: "destructive", title: "Image Too Large", description: "Please upload an image smaller than 2MB."});
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+        toast({title: "Image Selected", description: "Image ready to be sent with your message."});
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
 
@@ -648,6 +687,15 @@ export function ChatbotInterface() {
             </div>
           )}
         </ScrollArea>
+        {imagePreview && (
+            <div className="p-2.5 border-t bg-background/80 flex items-center gap-2">
+                 <img src={imagePreview} alt="Selected preview" className="h-12 w-12 object-cover rounded-md border"/>
+                 <p className="text-xs text-muted-foreground flex-grow">Image selected. Add a message or send.</p>
+                 <Button variant="ghost" size="icon" onClick={() => {setImagePreview(null); if(imageInputRef.current) imageInputRef.current.value = "";}} aria-label="Remove image">
+                    <X className="h-4 w-4"/>
+                 </Button>
+            </div>
+        )}
         {editingMessageId && (
              <div className="p-2.5 border-t bg-background/80">
                 <p className="text-xs text-muted-foreground text-center">Editing mode: Your changes will replace the message and trigger a new AI response from that point.</p>
@@ -658,6 +706,23 @@ export function ChatbotInterface() {
             onSubmit={handleSubmit}
             className="p-2.5 border-t bg-background rounded-b-lg flex items-center space-x-2"
             >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-muted-foreground hover:text-primary"
+              onClick={() => imageInputRef.current?.click()}
+              aria-label="Upload image"
+            >
+              <ImageIcon className="h-5 w-5" />
+            </Button>
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={imageInputRef} 
+              onChange={handleImageUpload} 
+              className="hidden" 
+            />
             <Input
                 value={inputValue}
                 onChange={handleInputChange}
@@ -669,7 +734,7 @@ export function ChatbotInterface() {
             <Button 
                 type="submit" 
                 size="icon" 
-                disabled={mutation.isPending || !inputValue.trim() || !authUser || !activeChatSessionId} 
+                disabled={mutation.isPending || (!inputValue.trim() && !imagePreview) || !authUser || !activeChatSessionId} 
                 className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10"
             >
                 {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

@@ -25,6 +25,8 @@ const CHAT_DRAFT_PREFIX = "nutriAIChatDraft_";
 const PINNED_CHATS_PREFIX = "nutriAIPinnedChats_";
 const AI_PERSONA_PREFIX = "nutriAIAiPersona_";
 const CHAT_FEEDBACK_PREFIX = "nutriAIChatFeedback_";
+const MESSAGE_REACTIONS_PREFIX = "nutriAIMessageReactions_";
+
 
 const MAX_CHAT_SESSIONS = 50;
 
@@ -44,7 +46,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string; // ISO string
   suggestions?: string[];
-  reaction?: string; // For emoji reactions
+  reaction?: 'like' | 'dislike'; // For emoji reactions
 }
 
 export interface ChatSession {
@@ -534,6 +536,39 @@ export function acknowledgeMedicalDisclaimer(userId: string, context: 'symptomLo
   }
 }
 
+// --- Message Reactions ---
+export function saveMessageReaction(userId: string, sessionId: string, messageId: string, reaction: 'like' | 'dislike' | undefined): void {
+  if (typeof window !== 'undefined') {
+    const key = `${MESSAGE_REACTIONS_PREFIX}${userId}_${sessionId}`;
+    let reactions = JSON.parse(localStorage.getItem(key) || '{}') as Record<string, 'like' | 'dislike' | undefined>;
+    if (reaction === undefined) {
+      delete reactions[messageId];
+    } else {
+      reactions[messageId] = reaction;
+    }
+    localStorage.setItem(key, JSON.stringify(reactions));
+
+    // Also update the reaction in the chat session itself
+    const session = getChatSession(userId, sessionId);
+    if (session) {
+      const messageIndex = session.messages.findIndex(m => m.id === messageId);
+      if (messageIndex > -1) {
+        session.messages[messageIndex].reaction = reaction;
+        saveChatSession(userId, session);
+      }
+    }
+  }
+}
+
+export function getMessageReactionsForSession(userId: string, sessionId: string): Record<string, 'like' | 'dislike' | undefined> {
+  if (typeof window !== 'undefined') {
+    const key = `${MESSAGE_REACTIONS_PREFIX}${userId}_${sessionId}`;
+    return JSON.parse(localStorage.getItem(key) || '{}');
+  }
+  return {};
+}
+
+
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
     removeAuthUser();
@@ -554,7 +589,10 @@ export function clearUserSession(userId?: string): void {
         localStorage.removeItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}restrictions_${userId}`);
         localStorage.removeItem(`${AI_PERSONA_PREFIX}${userId}`);
         localStorage.removeItem(`${CHAT_FEEDBACK_PREFIX}${userId}`);
-        // Remove drafts for all sessions (though typically sessions are cleared anyway)
-        // This part might be complex if many drafts exist; usually, deleting sessions handles it.
+        // Remove drafts for all sessions
+        const chatSessions = getAllChatSessions(userId); // Get remaining session IDs if any (should be none after deleteAll)
+        chatSessions.forEach(session => removeChatDraft(userId, session.id));
+        // Clear message reactions for all sessions
+        chatSessions.forEach(session => localStorage.removeItem(`${MESSAGE_REACTIONS_PREFIX}${userId}_${session.id}`));
     }
 }
