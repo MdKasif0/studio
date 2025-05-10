@@ -73,7 +73,31 @@ const homeDashboardGenFlow = ai.defineFlow(
   async (input) => {
     const { apiKey, ...promptInput } = input;
     const options = apiKey ? { config: { apiKey } } : undefined;
-    const { output } = await prompt(promptInput, options);
-    return output!;
+    
+    try {
+      const llmResponse = await prompt(promptInput, options);
+      const output = llmResponse.output;
+
+      if (!output) {
+        console.error("HomeDashboardFlow: AI model did not produce valid output matching the schema.");
+        // This error will be caught by the server action and then by the client
+        throw new Error("The AI assistant could not generate dashboard content at this moment because the output was empty or invalid.");
+      }
+      return output;
+    } catch (flowError) {
+      console.error("Error within homeDashboardGenFlow:", flowError);
+      // Check for specific, known error types if possible, e.g., API key issues
+      if (flowError instanceof Error) {
+        if (flowError.message.includes("API key") || flowError.message.toLowerCase().includes("invalid api key")) {
+          throw new Error("Dashboard generation failed due to an API Key issue. Please check your API key in Account Settings.");
+        }
+        if (flowError.message.includes("The AI assistant could not generate dashboard content")) {
+             throw flowError; // Re-throw the specific error from above
+        }
+      }
+      // For other errors, throw a more generic message to avoid leaking sensitive details
+      throw new Error("An unexpected error occurred while the AI assistant was generating dashboard content. Please try again later.");
+    }
   }
 );
+
