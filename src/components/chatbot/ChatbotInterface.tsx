@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; // Removed DialogTrigger import from here
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription as ShadDialogDescription, DialogFooter } from "@/components/ui/dialog"; // Renamed DialogDescription to avoid conflict
 import ReactMarkdown from 'react-markdown';
 import { Label } from "../ui/label";
 
@@ -177,7 +177,7 @@ export function ChatbotInterface() {
             toast({variant: "destructive", title: "Speech Error", description: "Could not play audio."})
         };
     }
-  }, [authUser, startNewChat, toast]); // Added toast to dependency array as it's used in onerror
+  }, [authUser, startNewChat, toast]); 
 
 
   const mutation = useMutation<NutritionChatbotOutput, Error, NutritionChatbotInput>({
@@ -442,28 +442,32 @@ export function ChatbotInterface() {
         <ScrollArea className="flex-grow">
           {displayedChatSessions.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No chats yet.</p>}
           {displayedChatSessions.map(session => (
-            <div key={session.id} className="mb-1 group">
-              <Button
-                variant="ghost"
+            <div key={session.id} className="mb-1 group flex items-center rounded-md hover:bg-muted/60 focus-within:ring-1 focus-within:ring-ring">
+              <div
+                role="button"
+                tabIndex={0}
                 className={cn(
-                  "w-full justify-start text-left h-auto py-1.5 px-2 text-sm",
-                  activeChatSessionId === session.id && "bg-primary/10 text-primary"
+                  "flex-grow justify-start text-left h-auto py-1.5 px-2 text-sm cursor-pointer",
+                  activeChatSessionId === session.id && "bg-primary/10 text-primary rounded-l-md"
                 )}
                 onClick={() => loadChatSession(session.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') loadChatSession(session.id); }}
               >
-                <div className="flex-grow truncate">
+                <div className="truncate">
                   <p className="font-medium truncate">{session.title || "Chat"}</p>
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(parseISO(session.updatedAt), { addSuffix: true })}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => {e.stopPropagation(); handleTogglePin(session.id);}}>
-                  {pinnedChatIds.includes(session.id) ? <PinOff className="h-3.5 w-3.5 text-accent" /> : <Pin className="h-3.5 w-3.5" />}
+              </div>
+              <div className={cn("flex items-center shrink-0 pr-1", activeChatSessionId === session.id && "bg-primary/10 rounded-r-md")}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={(e) => {e.stopPropagation(); handleTogglePin(session.id);}} aria-label={pinnedChatIds.includes(session.id) ? "Unpin chat" : "Pin chat"}>
+                  {pinnedChatIds.includes(session.id) ? <PinOff className="h-4 w-4 text-accent" /> : <Pin className="h-4 w-4" />}
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()} >
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={(e) => e.stopPropagation()} aria-label="Delete chat">
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -471,7 +475,7 @@ export function ChatbotInterface() {
                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteChat(session.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </Button>
+              </div>
             </div>
           ))}
         </ScrollArea>
@@ -624,9 +628,9 @@ export function ChatbotInterface() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Provide Feedback</DialogTitle>
-            <DialogDescription> {/* Changed from ShadDialogDescription */}
+            <ShadDialogDescription> 
               Help us improve NutriAI! What {feedbackType === 'suggestion' ? 'feature would you like to suggest' : 'went wrong or was misunderstood'}?
-            </DialogDescription>
+            </ShadDialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Label htmlFor="feedback-text" className="sr-only">Feedback Details</Label>
