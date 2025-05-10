@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { handleChatbotInteraction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { CornerDownLeft, Loader2, User, Bot, PlusCircle, Trash2, History, X, Pin, PinOff, Settings, Send, Mic, Volume2, FileDown, Edit3 } from "lucide-react";
+import { CornerDownLeft, Loader2, User, Bot, PlusCircle, Trash2, History, X, Pin, PinOff, Settings, Send, Volume2, FileDown, Edit3, ThumbsUp, ThumbsDown } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -39,12 +39,13 @@ import {
   type ChatFeedback,
   getUserDetails,
   getApiKey,
+  saveMessageReaction,
 } from "@/lib/authLocalStorage";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription as ShadDialogDescription, DialogFooter } from "@/components/ui/dialog"; // Renamed DialogDescription to avoid conflict
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription as ShadDialogDescription, DialogFooter } from "@/components/ui/dialog";
 import ReactMarkdown from 'react-markdown';
 import { Label } from "../ui/label";
 
@@ -65,6 +66,8 @@ export function ChatbotInterface() {
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'suggestion' | 'misunderstanding'>('suggestion');
   const [feedbackText, setFeedbackText] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
 
   const { toast } = useToast();
@@ -118,7 +121,7 @@ export function ChatbotInterface() {
           setMessages(session.messages);
           setInputValue(getChatDraft(authUser.id, lastActiveId) || "");
         } else {
-          removeActiveChatId(authUser.id); // Clear invalid ID from storage
+          removeActiveChatId(authUser.id); 
           lastActiveId = null;
         }
       }
@@ -127,13 +130,11 @@ export function ChatbotInterface() {
         startNewChat(false);
       }
     } else {
-      // User is not authenticated
       setMessages([]);
       setActiveChatSessionId(null);
       setInputValue("");
     }
 
-    // Speech Synthesis Setup
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         speechUtteranceRef.current = new SpeechSynthesisUtterance();
         speechUtteranceRef.current.onend = () => setIsSpeaking(false);
@@ -205,6 +206,7 @@ export function ChatbotInterface() {
       setInputValue(getChatDraft(authUser.id, sessionId) || "");
       setActiveChatId(authUser.id, sessionId);
       setIsHistoryPanelOpen(false); 
+      setEditingMessageId(null);
     } else {
       toast({ variant: "destructive", title: "Error", description: "Chat session not found." });
       startNewChat(false); 
@@ -350,6 +352,73 @@ export function ChatbotInterface() {
     setFeedbackText("");
   };
 
+  const handleEditMessage = (message: ChatMessage) => {
+    if (message.role === 'user') {
+        setEditingMessageId(message.id);
+        setEditingText(message.content);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!authUser || !activeChatSessionId || !editingMessageId || !editingText.trim()) return;
+    
+    const currentSession = getChatSession(authUser.id, activeChatSessionId);
+    if (!currentSession) return;
+
+    const messageIndex = currentSession.messages.findIndex(m => m.id === editingMessageId);
+    if (messageIndex === -1) return;
+
+    // Create new messages array up to the point of edit
+    const messagesUpToEdit = currentSession.messages.slice(0, messageIndex);
+    const editedUserMessage: ChatMessage = { ...currentSession.messages[messageIndex], content: editingText, timestamp: new Date().toISOString() };
+    
+    const updatedMessagesWithEdit = [...messagesUpToEdit, editedUserMessage];
+    setMessages(updatedMessagesWithEdit); // Update UI immediately
+
+    // Resubmit from this point
+    const chatHistoryForApi = updatedMessagesWithEdit.map(m => ({role: m.role, content: m.content}));
+    const userProfileForApi = {
+        healthGoals: userDetails?.primaryHealthGoal || "General wellness",
+        restrictions: userDetails?.dietaryRestrictions?.other || Object.entries(userDetails?.dietaryRestrictions || {})
+            .filter(([, value]) => value === true)
+            .map(([key]) => key)
+            .join(', ') || "None",
+        preferences: undefined, 
+    };
+    const userApiKey = getApiKey(authUser.id);
+
+    mutation.mutate({ 
+      userId: authUser.id,
+      message: editingText, // The edited message is the new prompt
+      history: chatHistoryForApi.slice(-10), // History includes the edited message
+      userProfile: userProfileForApi,
+      ...(userApiKey && { apiKey: userApiKey }),
+      ...(currentPersona && {persona: currentPersona}),
+    });
+
+    // Update the session in local storage *after* the AI responds (in mutation.onSuccess)
+    // For now, we can save the user's edit immediately if desired.
+    const sessionToUpdate = { ...currentSession, messages: updatedMessagesWithEdit, updatedAt: new Date().toISOString() };
+    saveChatSession(authUser.id, sessionToUpdate);
+    setChatSessions(getAllChatSessions(authUser.id));
+
+
+    setEditingMessageId(null);
+    setEditingText("");
+    toast({title: "Message Edited", description: "Resubmitting to AI..."})
+  };
+
+  const handleReaction = (messageId: string, reaction: 'like' | 'dislike') => {
+    if(!authUser || !activeChatSessionId) return;
+
+    setMessages(prevMessages => 
+        prevMessages.map(msg => 
+            msg.id === messageId ? {...msg, reaction: msg.reaction === reaction ? undefined : reaction} : msg
+        )
+    );
+    saveMessageReaction(authUser.id, activeChatSessionId, messageId, reaction);
+  };
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -358,7 +427,7 @@ export function ChatbotInterface() {
         scrollElement.scrollTop = scrollElement.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, editingMessageId]); // Added editingMessageId to ensure scroll on edit
 
   const displayedChatSessions = [
     ...chatSessions.filter(s => pinnedChatIds.includes(s.id)),
@@ -480,48 +549,89 @@ export function ChatbotInterface() {
                {message.role === "system" && (
                 <Avatar className="h-7 w-7 self-start shrink-0"><AvatarFallback className="bg-muted text-muted-foreground text-xs"><Settings size={16} /></AvatarFallback></Avatar>
               )}
-              <div
-                className={cn("p-2.5 rounded-lg shadow-sm text-sm",
-                  message.role === "user" ? "bg-primary text-primary-foreground" :
-                  message.role === "model" ? "bg-muted text-muted-foreground" :
-                  "bg-amber-50 border border-amber-200 text-amber-700" 
-                )}
-              >
-                <ReactMarkdown
-                    components={{
-                        p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-1 space-y-0.5" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-1 space-y-0.5" {...props} />,
-                        strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                        em: ({node, ...props}) => <em className="italic" {...props} />,
-                    }}
-                >{message.content}</ReactMarkdown>
+               <div className="group relative">
+                <div
+                  className={cn("p-2.5 rounded-lg shadow-sm text-sm",
+                    message.role === "user" ? "bg-primary text-primary-foreground" :
+                    message.role === "model" ? "bg-muted text-muted-foreground" :
+                    "bg-amber-50 border border-amber-200 text-amber-700" 
+                  )}
+                >
+                  {editingMessageId === message.id ? (
+                    <div className="space-y-2">
+                        <Textarea 
+                            value={editingText} 
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="text-sm bg-background text-foreground min-h-[60px]"
+                            rows={3}
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button size="sm" variant="ghost" onClick={() => setEditingMessageId(null)}>Cancel</Button>
+                            <Button size="sm" onClick={handleSaveEdit} disabled={!editingText.trim()}>Save & Resubmit</Button>
+                        </div>
+                    </div>
+                  ) : (
+                    <ReactMarkdown
+                        components={{
+                            p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-1 space-y-0.5" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-1 space-y-0.5" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                            em: ({node, ...props}) => <em className="italic" {...props} />,
+                        }}
+                    >{message.content}</ReactMarkdown>
+                  )}
 
-                {message.role === "model" && message.suggestions && message.suggestions.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
-                    {message.suggestions.map((suggestion, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-auto py-1 px-2 text-left justify-start hover:bg-background/20"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        disabled={mutation.isPending}
-                      >
-                        {suggestion}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                 <div className="text-xs mt-1.5 flex items-center gap-2" 
-                    style={{ color: message.role === 'user' ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                    {formatDistanceToNow(parseISO(message.timestamp), { addSuffix: true })}
-                    {message.role === "model" && !message.content.toLowerCase().includes("error") && (
-                        <Button variant="ghost" size="icon" className="h-5 w-5 p-0" onClick={() => handleSpeakMessage(message.content)} aria-label="Speak message" disabled={isSpeaking}>
-                            <Volume2 className={cn("h-3.5 w-3.5", isSpeaking && "text-accent animate-pulse")} />
+                  {message.role === "model" && message.suggestions && message.suggestions.length > 0 && editingMessageId !== message.id && (
+                    <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                      {message.suggestions.map((suggestion, idx) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-auto py-1 px-2 text-left justify-start hover:bg-background/20"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          disabled={mutation.isPending}
+                        >
+                          {suggestion}
                         </Button>
-                    )}
+                      ))}
+                    </div>
+                  )}
+                  {editingMessageId !== message.id && (
+                    <div className="text-xs mt-1.5 flex items-center gap-2" 
+                        style={{ color: message.role === 'user' ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                        {formatDistanceToNow(parseISO(message.timestamp), { addSuffix: true })}
+                        {message.role === "model" && !message.content.toLowerCase().includes("error") && (
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0" onClick={() => handleSpeakMessage(message.content)} aria-label="Speak message" disabled={isSpeaking}>
+                                <Volume2 className={cn("h-3.5 w-3.5", isSpeaking && "text-accent animate-pulse")} />
+                            </Button>
+                        )}
+                    </div>
+                  )}
                 </div>
+                 {editingMessageId !== message.id && (
+                    <div className={cn(
+                        "absolute -bottom-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5",
+                        message.role === "user" ? "right-0" : "left-0"
+                    )}>
+                        {message.role === "user" && (
+                             <Button variant="ghost" size="icon" className="h-6 w-6 p-1" onClick={() => handleEditMessage(message)} aria-label="Edit message">
+                                <Edit3 className="h-3 w-3" />
+                            </Button>
+                        )}
+                        {message.role === "model" && (
+                            <>
+                            <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-1", message.reaction === 'like' && 'text-green-500 bg-green-500/10')} onClick={() => handleReaction(message.id, 'like')} aria-label="Like message">
+                                <ThumbsUp className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-1", message.reaction === 'dislike' && 'text-red-500 bg-red-500/10')} onClick={() => handleReaction(message.id, 'dislike')} aria-label="Dislike message">
+                                <ThumbsDown className="h-3 w-3" />
+                            </Button>
+                            </>
+                        )}
+                    </div>
+                 )}
               </div>
                {message.role === "user" && (
                 <Avatar className="h-7 w-7 self-start shrink-0"><AvatarFallback className="bg-accent text-accent-foreground text-xs"><User size={16} /></AvatarFallback></Avatar>
@@ -538,31 +648,37 @@ export function ChatbotInterface() {
             </div>
           )}
         </ScrollArea>
-        <form
-          onSubmit={handleSubmit}
-          className="p-2.5 border-t bg-background rounded-b-lg flex items-center space-x-2"
-        >
-          <Input
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Ask me anything about nutrition..."
-            className="flex-grow h-10 text-sm"
-            disabled={mutation.isPending || !authUser || !activeChatSessionId}
-            aria-label="Chat message input"
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={mutation.isPending || !inputValue.trim() || !authUser || !activeChatSessionId} 
-            className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10"
-          >
-            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            <span className="sr-only">Send message</span>
-          </Button>
-        </form>
+        {editingMessageId && (
+             <div className="p-2.5 border-t bg-background/80">
+                <p className="text-xs text-muted-foreground text-center">Editing mode: Your changes will replace the message and trigger a new AI response from that point.</p>
+            </div>
+        )}
+        {!editingMessageId && (
+            <form
+            onSubmit={handleSubmit}
+            className="p-2.5 border-t bg-background rounded-b-lg flex items-center space-x-2"
+            >
+            <Input
+                value={inputValue}
+                onChange={handleInputChange}
+                placeholder="Ask me anything about nutrition..."
+                className="flex-grow h-10 text-sm"
+                disabled={mutation.isPending || !authUser || !activeChatSessionId}
+                aria-label="Chat message input"
+            />
+            <Button 
+                type="submit" 
+                size="icon" 
+                disabled={mutation.isPending || !inputValue.trim() || !authUser || !activeChatSessionId} 
+                className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10"
+            >
+                {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                <span className="sr-only">Send message</span>
+            </Button>
+            </form>
+        )}
       </div>
       
-      {/* Feedback Dialog */}
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -590,6 +706,3 @@ export function ChatbotInterface() {
     </div>
   );
 }
-
-
-```)
