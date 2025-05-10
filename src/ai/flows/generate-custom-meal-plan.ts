@@ -42,8 +42,10 @@ export type GenerateCustomMealPlanInput = z.infer<
 const MealSchema = z.object({
   name: z.string().describe("Name of the meal (e.g., Breakfast, Lunch, Dinner, Snack)."),
   dish: z.string().describe("Name of the dish for this meal."),
-  recipe: z.string().describe("Brief recipe or preparation instructions."),
-  notes: z.string().optional().describe("Any additional notes, like cooking tips or alternatives."),
+  recipe: z.string().describe("Brief recipe or preparation instructions. Include measurements where appropriate. If known, add simple batch cooking tips like 'Can be made ahead and stored for X days' or 'Double the recipe and freeze half' where applicable."),
+  servings: z.number().optional().describe("Number of servings this recipe makes. Default to 1 if not specified for family."),
+  substitutions: z.array(z.string()).optional().describe("Suggest 1-2 common, simple ingredient substitutions for key ingredients if applicable (e.g., 'For gluten-free: use gluten-free pasta')."),
+  notes: z.string().optional().describe("Any additional notes, like cooking tips, specific brand recommendations if crucial, or alternatives."),
 });
 
 const DailyPlanSchema = z.object({
@@ -88,7 +90,7 @@ User Profile & Preferences:
 *   Cooking Time Preference: {{{cookingTimePreference}}}
 *   Cuisine Preferences: {{{cuisinePreferences}}}
 *   Lifestyle: {{{lifestyle}}}
-*   Family Considerations: {{{familyMembersDescription}}} (If provided, ensure recipes are family-friendly and portioning advice considers this. If not provided, plan for one adult.)
+*   Family Considerations: {{{familyMembersDescription}}} (If provided, ensure recipes are family-friendly and portioning advice considers this. Default to 1 serving per recipe if not specified.)
 *   Feedback on Previous Plan (if any): {{{previousPlanFeedback}}} (Use this to improve the current plan)
 
 Meal Plan Requirements:
@@ -98,18 +100,21 @@ Meal Plan Requirements:
     *   List each meal (e.g., Breakfast, Lunch, Dinner, Snack if appropriate based on numberOfMeals).
     *   For each meal:
         *   Provide the dish name.
-        *   Include a brief, easy-to-follow recipe or preparation instructions.
+        *   Include a brief, easy-to-follow recipe or preparation instructions with measurements.
+        *   Specify the number of servings the recipe makes (default to 1 if not a family plan, or adjust based on familyMembersDescription).
+        *   Include 1-2 simple, common ingredient substitutions if applicable (e.g., "For gluten-free: use GF oats").
         *   Add any relevant notes (e.g., quick tips, make-ahead suggestions).
+        *   If practical, include a batch cooking tip (e.g., "Make a double batch of the quinoa on Day 1 to use throughout the week." or "This soup freezes well for up to 3 months.").
     *   Provide an estimated total for calories, protein, carbs, and fats for the day.
 3.  **Shopping List**: Generate a consolidated shopping list for all ingredients needed for the entire meal plan. Group items by category (e.g., Produce, Proteins, Dairy, Pantry Staples) if possible.
 4.  **Preparation Tips**: Offer 2-3 general tips for meal prepping or efficiently preparing the meals in this plan.
-5.  **Variety and Appeal**: Ensure the meal plan is varied, incorporates culturally diverse options if aligned with preferences, and is exciting. Avoid repetitive meals unless specifically requested or practical (e.g., batch-cooked lunches).
+5.  **Variety and Appeal**: Ensure the meal plan is varied, incorporates culturally diverse options if aligned with preferences, and is exciting. Avoid repetitive meals unless specifically requested or practical.
 6.  **Practicality**: Recipes should be realistic for the user's lifestyle and cooking time preference.
 7.  **Nutritional Balance**: While adhering to calorie targets, aim for a balanced distribution of macronutrients suitable for their health goals.
 
 Tone: Empathetic, encouraging, and professional. Make the user feel supported and excited to start their plan.
 
-Output Format: Strictly adhere to the defined output schema.
+Output Format: Strictly adhere to the defined output schema. Ensure all recipes are detailed enough to be followed by a novice cook and include measurements.
   `,
 });
 
@@ -126,3 +131,4 @@ const generateCustomMealPlanFlow = ai.defineFlow(
     return output!;
   }
 );
+

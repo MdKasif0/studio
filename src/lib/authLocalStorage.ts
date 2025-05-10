@@ -3,7 +3,7 @@
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
 import type { HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
-import type { GenerateCustomMealPlanOutput } from "@/ai/flows/generate-custom-meal-plan";
+import type { GenerateCustomMealPlanOutput, GenerateCustomMealPlanInput } from "@/ai/flows/generate-custom-meal-plan"; // Assuming Meal is part of GenerateCustomMealPlanOutput or a sub-type
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
@@ -16,6 +16,7 @@ const CACHED_MEAL_PLAN_PREFIX = "nutriAICachedMealPlan_";
 const DAILY_STREAK_PREFIX = "nutriAIDailyStreak_";
 const UNLOCKED_BADGES_PREFIX = "nutriAIUnlockedBadges_";
 const LAST_WEEKLY_SUMMARY_PREFIX = "nutriAILastWeeklySummary_";
+const FAVORITE_RECIPES_PREFIX = "nutriAIFavoriteRecipes_";
 
 
 export interface AuthUser {
@@ -44,12 +45,28 @@ export interface HomeDashboardCache {
 export interface SymptomLogEntry extends SymptomLogFormValues {
   id: string; // Unique ID for the log entry
   loggedAt: string; // ISO string timestamp when the log was created by the user action
+  isQuickLog?: boolean; // Flag for quick logs
 }
 
 export interface DailyStreakData {
   lastLogDate: string; // YYYY-MM-DD
   currentStreak: number;
 }
+
+// Define a type for a Meal based on what's in GenerateCustomMealPlanOutput's dailyPlans.meals
+// This might need to be adjusted based on the exact structure of MealSchema in generate-custom-meal-plan.ts
+export interface FavoriteRecipe {
+  id: string; // Could be dayIndex-mealIndex or a hash of the recipe content
+  day?: string; // Optional: day of the plan it came from
+  mealName: string;
+  dishName: string;
+  recipeContent: string;
+  servings?: number;
+  notes?: string;
+  substitutions?: string[];
+  addedAt: string; // ISO string timestamp
+}
+
 
 // --- Auth User ---
 export function saveAuthUser(user: AuthUser): void {
@@ -161,11 +178,12 @@ export function removeHomeDashboardData(userId: string): void {
 }
 
 // --- Symptom Logs ---
-export function saveSymptomLog(userId: string, logEntry: SymptomLogFormValues): SymptomLogEntry {
+export function saveSymptomLog(userId: string, logEntry: SymptomLogFormValues, isQuickLog: boolean = false): SymptomLogEntry {
   const newLog: SymptomLogEntry = {
     ...logEntry,
     id: `symptom_${new Date().getTime()}_${Math.random().toString(36).substring(2, 7)}`,
     loggedAt: new Date().toISOString(),
+    isQuickLog: isQuickLog,
   };
   if (typeof window !== 'undefined') {
     const logs = getSymptomLogs(userId);
@@ -284,6 +302,60 @@ export function removeLastWeeklySummaryDate(userId: string): void {
   }
 }
 
+// --- Favorite Recipes ---
+export function getFavoriteRecipes(userId: string): FavoriteRecipe[] {
+  if (typeof window !== 'undefined') {
+    const favStr = localStorage.getItem(`${FAVORITE_RECIPES_PREFIX}${userId}`);
+    return favStr ? JSON.parse(favStr) : [];
+  }
+  return [];
+}
+
+export function saveFavoriteRecipe(userId: string, recipe: Omit<FavoriteRecipe, 'id' | 'addedAt'> & {id?: string}): FavoriteRecipe {
+  if (typeof window !== 'undefined') {
+    const favorites = getFavoriteRecipes(userId);
+    const recipeId = recipe.id || `${recipe.mealName.replace(/\s+/g, '-')}-${recipe.dishName.replace(/\s+/g, '-')}-${Date.now()}`;
+    const newFavorite: FavoriteRecipe = {
+        ...recipe,
+        id: recipeId,
+        addedAt: new Date().toISOString(),
+    };
+    const existingIndex = favorites.findIndex(fav => fav.id === newFavorite.id);
+    if (existingIndex > -1) {
+      favorites[existingIndex] = newFavorite; // Update if exists
+    } else {
+      favorites.push(newFavorite);
+    }
+    localStorage.setItem(`${FAVORITE_RECIPES_PREFIX}${userId}`, JSON.stringify(favorites));
+    return newFavorite;
+  }
+  // This case should ideally not be hit if window is checked, but need to satisfy return type.
+  // Consider throwing an error or handling it more gracefully if `window` is not available.
+   return { ...recipe, id: recipe.id || 'error-id', addedAt: new Date().toISOString() } as FavoriteRecipe;
+}
+
+export function removeFavoriteRecipe(userId: string, recipeId: string): void {
+  if (typeof window !== 'undefined') {
+    let favorites = getFavoriteRecipes(userId);
+    favorites = favorites.filter(fav => fav.id !== recipeId);
+    localStorage.setItem(`${FAVORITE_RECIPES_PREFIX}${userId}`, JSON.stringify(favorites));
+  }
+}
+
+export function isRecipeFavorite(userId: string, recipeId: string): boolean {
+  if (typeof window !== 'undefined') {
+    const favorites = getFavoriteRecipes(userId);
+    return favorites.some(fav => fav.id === recipeId);
+  }
+  return false;
+}
+
+export function removeAllFavoriteRecipes(userId: string): void {
+  if (typeof window !== 'undefined') {
+      localStorage.removeItem(`${FAVORITE_RECIPES_PREFIX}${userId}`);
+  }
+}
+
 
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
@@ -298,6 +370,7 @@ export function clearUserSession(userId?: string): void {
         removeDailyStreakData(userId);
         removeUnlockedBadges(userId);
         removeLastWeeklySummaryDate(userId);
+        removeAllFavoriteRecipes(userId); // Clear favorites on logout
         localStorage.removeItem(`onboardingComplete_${userId}`);
     }
 }

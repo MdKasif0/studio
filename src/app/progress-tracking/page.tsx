@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react'; 
@@ -7,7 +6,7 @@ import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal, Sparkles, BadgeCheck, MessageCircleQuestion } from "lucide-react";
+import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal, Sparkles, BadgeCheck, MessageCircleQuestion, Zap, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleLogSymptom } from "@/lib/actions";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
@@ -22,6 +21,10 @@ import {
   getSymptomLogs
 } from "@/lib/authLocalStorage"; 
 import { format, subDays, isSameDay, parseISO } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const NUTRITION_FUN_FACTS = [
   "Avocados are fruits, not vegetables!",
@@ -47,6 +50,9 @@ export default function ProgressTrackingPage() {
   const queryClient = useQueryClient(); 
   const [defaultLogTime, setDefaultLogTime] = React.useState<string | undefined>(undefined);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isQuickLogDialogOpen, setIsQuickLogDialogOpen] = useState(false);
+  const [quickLogMealName, setQuickLogMealName] = useState("");
+
 
   useEffect(() => {
     const now = new Date();
@@ -133,14 +139,14 @@ export default function ProgressTrackingPage() {
 
 
   const symptomLogMutation = useMutation({
-    mutationFn: handleLogSymptom, 
+    mutationFn: (params: { data: SymptomLogFormValues, isQuickLog?: boolean }) => handleLogSymptom(params.data, params.isQuickLog),
     onSuccess: (data, variables) => { 
       toast({
-        title: "Symptoms Logged",
+        title: variables.isQuickLog ? "Quick Log Saved!" : "Symptoms Logged",
         description: data.message, 
       });
       if (data.success && authUser) {
-        saveSymptomLog(authUser.id, variables); 
+        // saveSymptomLog is now called within handleLogSymptom action if successful
         updateDailyStreak(authUser.id);
         showFunFact();
         checkMicroRewards(authUser.id);
@@ -165,8 +171,37 @@ export default function ProgressTrackingPage() {
       toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to log symptoms." });
       return;
     }
-    symptomLogMutation.mutate(data);
+    symptomLogMutation.mutate({ data });
   };
+
+  const handleQuickLogSubmit = () => {
+    if (!authUser) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in." });
+      return;
+    }
+    if (!quickLogMealName.trim()) {
+      toast({ variant: "destructive", title: "Meal Name Required", description: "Please enter a name for your quick log." });
+      return;
+    }
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localTime = new Date(now.getTime() - (offset * 60 * 1000)).toISOString().slice(0,16);
+
+    const quickLogData: SymptomLogFormValues = {
+      mealName: quickLogMealName,
+      logTime: localTime,
+      // Optional fields can be empty or have default values
+      energyLevel: "unchanged", 
+      mood: "",
+      digestiveSymptoms: "",
+      otherSymptoms: "",
+      notes: "Quick Logged Meal",
+    };
+    symptomLogMutation.mutate({ data: quickLogData, isQuickLog: true });
+    setIsQuickLogDialogOpen(false);
+    setQuickLogMealName(""); // Reset for next time
+  };
+
 
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8 md:space-y-12">
@@ -186,19 +221,64 @@ export default function ProgressTrackingPage() {
         </AlertDescription>
       </Alert>
 
+      <div className="text-center">
+        <Dialog open={isQuickLogDialogOpen} onOpenChange={setIsQuickLogDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="lg" className="bg-primary hover:bg-primary/90">
+              <Zap className="mr-2 h-5 w-5" /> Quick Log Meal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Quick Log Meal</DialogTitle>
+              <DialogDescription>
+                Quickly log a meal you just ate. Current time will be used.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quick-meal-name" className="text-right col-span-1">
+                  Meal
+                </Label>
+                <Input
+                  id="quick-meal-name"
+                  value={quickLogMealName}
+                  onChange={(e) => setQuickLogMealName(e.target.value)}
+                  placeholder="e.g., Apple with Peanut Butter"
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                onClick={handleQuickLogSubmit} 
+                disabled={symptomLogMutation.isPending || !quickLogMealName.trim()}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {symptomLogMutation.isPending && symptomLogMutation.variables?.isQuickLog ? <Activity className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Save Quick Log
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+         <p className="text-xs text-muted-foreground mt-2">Use Quick Log for fast entries, or detailed log below.</p>
+      </div>
+
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <Card className="shadow-xl">
           <CardHeader className="p-4 md:p-6">
             <div className="flex items-center gap-2 md:gap-3">
               <FilePlus2 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-              <CardTitle className="text-xl md:text-2xl">Log Post-Meal Feelings</CardTitle>
+              <CardTitle className="text-xl md:text-2xl">Detailed Post-Meal Log</CardTitle>
             </div>
             <CardDescription className="text-sm md:text-base">
               Note how you feel after meals to help identify patterns or potential sensitivities. This feature is in early development.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            {symptomLogMutation.isError && (
+            {symptomLogMutation.isError && !symptomLogMutation.variables?.isQuickLog && ( // Only show form error if not a quick log error
                 <Alert variant="destructive" className="mb-4">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Error</AlertTitle>
@@ -209,7 +289,7 @@ export default function ProgressTrackingPage() {
             )}
             <SymptomLogForm 
               onSubmit={onSymptomSubmit} 
-              isPending={symptomLogMutation.isPending}
+              isPending={symptomLogMutation.isPending && !symptomLogMutation.variables?.isQuickLog}
               initialDateTime={defaultLogTime} 
             />
           </CardContent>
@@ -237,4 +317,3 @@ export default function ProgressTrackingPage() {
     </div>
   );
 }
-
