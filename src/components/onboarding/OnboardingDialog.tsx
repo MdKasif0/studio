@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -15,11 +14,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { healthGoals, commonDietaryRestrictions, type AccountSettingsFormData } from '@/lib/schemas/authSchemas';
 import { useMutation } from '@tanstack/react-query';
-import { handleAccountUpdate } from '@/lib/actions';
+// import { handleAccountUpdate } from '@/lib/actions'; // Not calling server action directly for onboarding save
 import { useToast } from '@/hooks/use-toast';
 import type { AuthUser, StoredUserDetails } from '@/lib/authLocalStorage';
 import { saveUserDetails, getUserDetails } from '@/lib/authLocalStorage';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Leaf, Utensils, MessageSquareHeart, BarChart3, ClipboardList } from 'lucide-react';
+import Link from 'next/link';
 
 const onboardingSchema = z.object({
   primaryHealthGoal: z.enum(healthGoals, {
@@ -30,7 +30,7 @@ const onboardingSchema = z.object({
       Object.keys(commonDietaryRestrictions).map(key => [key, z.boolean().default(false).optional()])
     ) as Record<keyof typeof commonDietaryRestrictions, z.ZodOptional<z.ZodBoolean>> & { other: z.ZodOptional<z.ZodString> }
   ).extend({ other: z.string().optional() }).optional(),
-  // Add more steps/fields as needed
+  // No validation needed for step 3 as it's informational
 });
 
 type OnboardingFormData = z.infer<typeof onboardingSchema>;
@@ -40,7 +40,7 @@ interface OnboardingDialogProps {
   onComplete: () => void;
 }
 
-const TOTAL_STEPS = 2; // Example: Goal setting, Dietary restrictions
+const TOTAL_STEPS = 3; // Step 1: Goal, Step 2: Restrictions, Step 3: Features Overview
 
 export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -60,20 +60,12 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
     },
   });
 
-  const accountUpdateMutation = useMutation({
+  // Mutation to save onboarding data to local storage
+  const saveOnboardingMutation = useMutation({
     mutationFn: async (data: OnboardingFormData) => {
-      const accountData: AccountSettingsFormData = {
-        username: user.username, // Username and email are not changed in onboarding
-        email: user.email,
-        primaryHealthGoal: data.primaryHealthGoal,
-        dietaryRestrictions: data.dietaryRestrictions,
-      };
-      // We are not calling the server action here, just saving to local storage
-      // as the server action `handleAccountUpdate` is more for profile editing
-      // For onboarding, direct local storage update is fine for now.
       const newDetails: StoredUserDetails = {
           primaryHealthGoal: data.primaryHealthGoal,
-          dietaryRestrictions: data.dietaryRestrictions || {},
+          dietaryRestrictions: data.dietaryRestrictions || {}, // Ensure it's an object
           profilePictureDataUrl: existingUserDetails?.profilePictureDataUrl, 
         };
       saveUserDetails(user.id, newDetails);
@@ -82,7 +74,7 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
     onSuccess: (response) => {
       if (response.success) {
         toast({ title: 'Welcome!', description: 'Your initial preferences have been saved.' });
-        onComplete();
+        onComplete(); // This will also trigger the welcome tour message
       } else {
         toast({ variant: "destructive", title: 'Error', description: response.message });
       }
@@ -93,27 +85,33 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
   });
 
 
-  const handleNextStep = () => {
-    form.trigger().then(isValid => {
-      if (isValid) {
-        if (currentStep < TOTAL_STEPS) {
-          setCurrentStep(prev => prev + 1);
-        } else {
-          // Last step, submit the form
-          accountUpdateMutation.mutate(form.getValues());
-        }
+  const handleNextStep = async () => {
+    let isValid = true;
+    if (currentStep === 1) {
+      isValid = await form.trigger("primaryHealthGoal");
+    } else if (currentStep === 2) {
+      isValid = await form.trigger("dietaryRestrictions");
+    }
+    // Step 3 has no validation
+
+    if (isValid) {
+      if (currentStep < TOTAL_STEPS) {
+        setCurrentStep(prev => prev + 1);
       } else {
-        // Highlight errors
-        Object.keys(form.formState.errors).forEach(key => {
-          const fieldKey = key as keyof OnboardingFormData;
-          toast({
-            variant: "destructive",
-            title: `Error in ${fieldKey}`,
-            description: form.formState.errors[fieldKey]?.message
-          })
-        })
+        // Last step, submit the form
+        saveOnboardingMutation.mutate(form.getValues());
       }
-    });
+    } else {
+        // Find first error to display
+        const errors = form.formState.errors;
+        if (errors.primaryHealthGoal) {
+             toast({ variant: "destructive", title: "Goal Needed", description: errors.primaryHealthGoal.message });
+        } else if (errors.dietaryRestrictions) {
+            // This case might be harder to trigger if all sub-fields are optional.
+            // The schema makes the whole dietaryRestrictions object optional.
+            toast({ variant: "destructive", title: "Check Restrictions", description: "Please review dietary restrictions." });
+        }
+    }
   };
 
   const handlePreviousStep = () => {
@@ -129,22 +127,23 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
       <DialogContent className="sm:max-w-md md:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-2xl">Welcome to Nutri AI, {user.username}!</DialogTitle>
-          <DialogDescription>Let&apos;s set up your preferences to personalize your experience.</DialogDescription>
+          <DialogDescription>Let&apos;s quickly set up your preferences to personalize your experience.</DialogDescription>
         </DialogHeader>
 
         <Progress value={progressValue} className="w-full my-4" />
         <p className="text-sm text-muted-foreground text-center mb-4">Step {currentStep} of {TOTAL_STEPS}</p>
 
         <Form {...form}>
-          <form onSubmit={(e) => {e.preventDefault(); handleNextStep();}} className="space-y-6">
+          {/* Use a direct form submission handler for simplicity */}
+          <form onSubmit={(e) => {e.preventDefault(); handleNextStep();}} className="space-y-6 min-h-[250px]">
             {currentStep === 1 && (
               <FormField
                 control={form.control}
                 name="primaryHealthGoal"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">What&apos;s your primary health goal?</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={accountUpdateMutation.isPending}>
+                    <FormLabel className="text-lg font-semibold">What&apos;s your primary health goal?</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={saveOnboardingMutation.isPending}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select your primary health goal" />
@@ -167,10 +166,10 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
 
             {currentStep === 2 && (
               <FormItem>
-                <FormLabel className="text-lg">Any dietary restrictions or strong preferences?</FormLabel>
+                <FormLabel className="text-lg font-semibold">Any dietary restrictions or strong preferences?</FormLabel>
                 <FormDescription className="pb-2">Select any that apply. This is optional.</FormDescription>
                 <ScrollArea className="h-60 rounded-md border p-4">
-                  <fieldset disabled={accountUpdateMutation.isPending} className="space-y-3">
+                  <fieldset disabled={saveOnboardingMutation.isPending} className="space-y-3">
                     {Object.entries(commonDietaryRestrictions).map(([key, label]) => (
                       <FormField
                         key={key}
@@ -180,7 +179,7 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
                           <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                             <FormControl>
                               <Checkbox
-                                checked={field.value as boolean | undefined}
+                                checked={!!field.value} // Ensure boolean for checkbox
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -211,18 +210,36 @@ export function OnboardingDialog({ user, onComplete }: OnboardingDialogProps) {
                 </ScrollArea>
               </FormItem>
             )}
-            {/* Add more steps here */}
+            
+            {currentStep === 3 && (
+                <div className="space-y-3">
+                    <h3 className="text-lg font-semibold">Quick Tour: Key Features!</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Nutri AI is packed with features to help you on your wellness journey. Here are a few highlights:
+                    </p>
+                    <ul className="list-none space-y-2 text-sm">
+                        <li className="flex items-center gap-2"><Utensils className="h-5 w-5 text-primary"/> Personalized Meal Plans tailored to your goals.</li>
+                        <li className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-primary"/> In-depth Dietary Analysis for insights.</li>
+                        <li className="flex items-center gap-2"><MessageSquareHeart className="h-5 w-5 text-primary"/> AI Assistant for questions and motivation.</li>
+                        <li className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary"/> Progress Tracking to see how far you've come.</li>
+                    </ul>
+                    <p className="text-sm text-muted-foreground pt-2">
+                        Explore these sections from the navigation menu. You can always update your preferences in the <Link href="/account" className="text-primary hover:underline" onClick={onComplete}>Account</Link> section.
+                    </p>
+                </div>
+            )}
 
-            <DialogFooter className="sm:justify-between pt-4">
+
+            <DialogFooter className="sm:justify-between pt-4 absolute bottom-6 right-6 left-6">
               {currentStep > 1 && (
-                <Button type="button" variant="outline" onClick={handlePreviousStep} disabled={accountUpdateMutation.isPending}>
+                <Button type="button" variant="outline" onClick={handlePreviousStep} disabled={saveOnboardingMutation.isPending}>
                   Previous
                 </Button>
               )}
-               <div className="sm:flex-grow sm:text-right"> {/* This div ensures the next/finish button is pushed to the right if previous is not there */}
-                <Button type="submit" disabled={accountUpdateMutation.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  {accountUpdateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {currentStep === TOTAL_STEPS ? 'Finish Setup' : 'Next'}
+               <div className={`sm:flex-grow ${currentStep === 1 ? 'sm:text-right' : ''}`}>
+                <Button type="submit" disabled={saveOnboardingMutation.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  {saveOnboardingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {currentStep === TOTAL_STEPS ? 'Start My Journey!' : 'Next'}
                 </Button>
               </div>
             </DialogFooter>

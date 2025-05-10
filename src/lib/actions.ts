@@ -23,6 +23,7 @@ import {
 import type { AccountSettingsFormData, ChangePasswordFormData, LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 import { homeDashboardFlow, type HomeDashboardInput, type HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
+import { getAuthUser, saveSymptomLog } from "@/lib/authLocalStorage"; // Added saveSymptomLog
 
 
 export async function handleDietaryAnalysis(
@@ -122,6 +123,11 @@ export async function handleHomeDashboardUpdate(
     if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key") || error.message.toLowerCase().includes("permission denied"))) {
          throw new Error("Dashboard update failed due to an API Key or permission issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
     }
+    // Do not re-throw a generic error here if homeDashboardFlow already throws a specific one.
+    // Let the specific error propagate.
+    if (error instanceof Error && error.message.startsWith("Dashboard generation failed") || error.message.startsWith("The AI assistant could not generate")) {
+        throw error;
+    }
     throw new Error(`Failed to update dashboard: ${errorMessage}. Please try again.`);
   }
 }
@@ -194,11 +200,39 @@ export async function handleDeleteAccountAction(): Promise<{ success: boolean; m
 
 export async function handleLogSymptom(data: SymptomLogFormValues): Promise<{ success: boolean; message: string }> {
   console.log("Server Action: handleLogSymptom called with data:", data);
+  // This is a server action, but local storage is client-side.
+  // For the purpose of this simulation where backend is local and state is managed in browser,
+  // we'll assume this action can "instruct" the client to save.
+  // In a real app, this would be an API call that saves to a DB.
+  // The client would then update its local state/cache upon successful API response.
+  
+  // Simulate getting the current user (in a real app, this would come from session/auth context)
+  // For now, this action won't directly interact with local storage as it's 'use server'.
+  // The calling client component will handle local storage saving based on the result of this action.
+  // However, to fulfill the "save to local storage" requirement directly from action logic (as if it were client-side for simulation):
+  // This approach is a bit of a hack for "use server" context.
+  // The *ideal* way is client calls server action, server action returns, client updates.
+  // But to *ensure* it's "saved" as part of this action's flow as requested:
+  // We can't directly call client-side localStorage from a 'use server' file.
+
+  // The provided pattern is: client calls action, action returns, client updates.
+  // So, the actual saving to localStorage will occur in the client component that calls this.
+  // This server action will just validate and return a success/failure message.
+  // The client-side `symptomLogMutation.onSuccess` will then handle the local storage part.
+
   await new Promise(resolve => setTimeout(resolve, 800));
 
   if (data.mealName.toLowerCase().includes("trigger error")) {
     return { success: false, message: "Simulated error logging symptoms. Please try again." };
   }
-  console.log("Symptom log simulated successfully for meal:", data.mealName);
-  return { success: true, message: "Symptoms logged successfully." };
+
+  // The actual local storage saving needs to be initiated from the client side
+  // after this server action successfully completes.
+  // The client component (`ProgressTrackingPage`) calling `handleLogSymptom` 
+  // should use `saveSymptomLog` from `@/lib/authLocalStorage` in its `onSuccess` handler.
+  // For this simulation, we just return success.
+
+  console.log("Symptom log data processed by server action for meal:", data.mealName);
+  return { success: true, message: "Symptoms processed successfully by server. Client should save to local storage." };
 }
+

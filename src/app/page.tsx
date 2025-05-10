@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2 } from "lucide-react";
+import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getAuthUser, getUserDetails, getApiKey, type AuthUser, type StoredUserDetails, saveHomeDashboardData, getHomeDashboardData, type HomeDashboardCache } from "@/lib/authLocalStorage";
@@ -11,6 +11,14 @@ import { handleHomeDashboardUpdate } from "@/lib/actions";
 import type { HomeDashboardInput, HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 import { useToast } from "@/hooks/use-toast";
 import { OnboardingDialog } from '@/components/onboarding/OnboardingDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 export default function HomePage() {
@@ -20,20 +28,26 @@ export default function HomePage() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const { toast } = useToast();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showWelcomeTourMessage, setShowWelcomeTourMessage] = useState(false);
 
   const checkOnboardingStatus = useCallback(() => {
     const user = getAuthUser();
-    setAuthUser(user);
+    setAuthUser(user); // Ensure authUser is set at the beginning
     if (user) {
       const details = getUserDetails(user.id);
       setUserDetails(details);
       const onboardingComplete = localStorage.getItem(`onboardingComplete_${user.id}`);
       if (!onboardingComplete) {
         setShowOnboarding(true);
+        setIsLoadingDashboard(false); // Don't load dashboard if onboarding
+        setDashboardData(null);
       } else {
         setShowOnboarding(false);
+        // Proceed to fetch dashboard data if onboarding is complete
+        // This will be handled by the other useEffect
       }
     } else {
+      // No user logged in
       setIsLoadingDashboard(false); 
       setDashboardData(null); 
       setShowOnboarding(false);
@@ -49,7 +63,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!authUser || showOnboarding) { 
       setIsLoadingDashboard(false);
-      setDashboardData(null);
+      // setDashboardData(null); // Already handled in checkOnboardingStatus
       return;
     }
 
@@ -58,6 +72,7 @@ export default function HomePage() {
       const cachedData = getHomeDashboardData(authUser.id);
       const now = new Date().getTime();
 
+      // Cache valid for 15 minutes
       if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
         setIsLoadingDashboard(false);
@@ -66,8 +81,11 @@ export default function HomePage() {
 
       try {
         const userApiKey = getApiKey(authUser.id);
-        const currentLocalUserDetails = getUserDetails(authUser.id);
+        // Fetch latest user details for the API call, might have changed since initial load
+        const currentLocalUserDetails = getUserDetails(authUser.id); 
         
+        // Update local userDetails state if it's different from what we have
+        // This primarily helps if userDetails were updated in another tab/session part.
         if (JSON.stringify(currentLocalUserDetails) !== JSON.stringify(userDetails)) {
           setUserDetails(currentLocalUserDetails); 
         }
@@ -80,8 +98,8 @@ export default function HomePage() {
             dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ?
               Object.entries(currentLocalUserDetails.dietaryRestrictions)
                     .filter(([, value]) => value === true || (typeof value === 'string' && value.length > 0)) 
-                    .map(([key, value]) => key === 'other' && typeof value === 'string' ? value : key)
-                    .filter(Boolean) 
+                    .map(([key, value]) => key === 'other' && typeof value === 'string' ? value : key) // Handle 'other' text
+                    .filter(Boolean) // Remove any empty/falsey values from map
                     .join(', ')
               : "none",
           },
@@ -89,6 +107,7 @@ export default function HomePage() {
           ...(userApiKey && { apiKey: userApiKey }),
         };
         
+        // Ensure dietaryRestrictions is not an empty string if no restrictions were joined
         if (!input.userProfile.dietaryRestrictions) {
             input.userProfile.dietaryRestrictions = "none";
         }
@@ -100,15 +119,17 @@ export default function HomePage() {
         console.error("Failed to fetch dashboard data:", error);
         const errorMessage = error instanceof Error ? error.message : "Could not load dashboard data. The AI assistant might be unavailable.";
         
-        // Check if already loading or if dashboard data is already set to avoid spamming toasts
-        // This logic was simplified as it was too complex and potentially causing issues.
-        // The toast will now show if an error occurs during fetch.
-        toast({
-            variant: "destructive",
-            title: "Dashboard Error",
-            description: errorMessage,
-        });
+        // Only show toast if not already loading and no dashboard data (or if error specifically mentions API key)
+        // Avoids spamming if component re-renders while still loading.
+        if (!isLoadingDashboard || (error instanceof Error && error.message.includes("API Key"))) {
+           toast({
+              variant: "destructive",
+              title: "Dashboard Error",
+              description: errorMessage,
+          });
+        }
         
+        // Fallback to cached data if fetch fails but cache exists
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -116,16 +137,22 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [authUser, showOnboarding, userDetails, toast]); // Corrected dependency array
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  }, [authUser, showOnboarding, toast]); // userDetails removed to prevent loop, API call fetches fresh details
+
 
   const handleOnboardingComplete = () => {
     if (authUser) {
       localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
     }
     setShowOnboarding(false);
+    setShowWelcomeTourMessage(true); // Trigger welcome message
+    // Refetch userDetails and trigger dashboard update
     if(authUser) {
         const details = getUserDetails(authUser.id);
-        setUserDetails(details); 
+        setUserDetails(details); // Update state to reflect onboarding changes
+        // Explicitly trigger dashboard fetch again because showOnboarding changed
+        // The useEffect for dashboard data will pick this up.
     }
   };
 
@@ -248,6 +275,32 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full">
       {showOnboarding && authUser && <OnboardingDialog user={authUser} onComplete={handleOnboardingComplete} />}
+      
+      {showWelcomeTourMessage && (
+        <AlertDialog open={showWelcomeTourMessage} onOpenChange={setShowWelcomeTourMessage}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Leaf className="h-6 w-6 text-primary" /> Welcome to Nutri AI!
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-left space-y-2 pt-2">
+                <p>You&apos;re all set up! Here are a few things you can do:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Explore your personalized <Link href="/meal-plan" className="text-primary hover:underline">Meal Plan</Link>.</li>
+                  <li>Chat with our <Link href="/chatbot" className="text-primary hover:underline">AI Assistant</Link> for quick tips.</li>
+                  <li>Dive into <Link href="/dietary-analysis" className="text-primary hover:underline">Dietary Analysis</Link> for deeper insights.</li>
+                  <li>Visit your <Link href="/account" className="text-primary hover:underline">Account</Link> to manage preferences.</li>
+                </ul>
+                <p className="pt-2">Happy, healthy eating!</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogAction onClick={() => setShowWelcomeTourMessage(false)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              Got it!
+            </AlertDialogAction>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <header className="text-center space-y-4 pt-4 md:pt-0">
         <Leaf className="mx-auto h-12 w-12 md:h-16 md:w-16 text-primary" />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
@@ -303,9 +356,12 @@ export default function HomePage() {
               ))}
             </div>
           ) : authUser && !dashboardData ? ( 
-               <p className="text-center mt-6 text-md text-muted-foreground">
-                  Could not load dashboard data. Please check your API key or try again later.
-              </p>
+              <div className="text-center mt-6 text-md text-muted-foreground bg-card p-6 rounded-lg shadow">
+                <Info className="mx-auto h-10 w-10 text-destructive mb-3"/>
+                 <p className="font-semibold text-lg">Dashboard Data Unavailable</p>
+                 <p>Could not load dashboard data at this moment.</p>
+                 <p className="text-sm">Please check your API key in <Link href="/account" className="text-primary hover:underline">Account Settings</Link> or try again later.</p>
+              </div>
           ) : ( 
               <p className="text-center mt-6 text-md text-muted-foreground">
                   Login to view your personalized dashboard.
@@ -372,3 +428,4 @@ export default function HomePage() {
     </div>
   );
 }
+

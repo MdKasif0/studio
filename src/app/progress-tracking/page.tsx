@@ -1,8 +1,7 @@
-
 "use client";
 
-import React from 'react';
-import { useMutation } from "@tanstack/react-query";
+import React, { useState, useEffect } from 'react'; // Added useState, useEffect
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // Added useQueryClient
 import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,33 +10,34 @@ import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { handleLogSymptom } from "@/lib/actions";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
-// import type { Metadata } from "next"; // Not used directly in client component
-
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Progress & Symptom Tracking | Nutri AI",
-//   description: "Track your nutritional progress, log post-meal symptoms, and visualize your achievements with Nutri AI. (Not a medical tool).",
-// };
+import { getAuthUser, saveSymptomLog, type AuthUser } from "@/lib/authLocalStorage"; // Added getAuthUser, saveSymptomLog, AuthUser
 
 export default function ProgressTrackingPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // For potential cache invalidation/refetch
   const [defaultLogTime, setDefaultLogTime] = React.useState<string | undefined>(undefined);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Set default log time for the form when component mounts on client
     const now = new Date();
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset * 60 * 1000));
     setDefaultLogTime(localDate.toISOString().slice(0, 16));
+    setAuthUser(getAuthUser());
   }, []);
 
   const symptomLogMutation = useMutation({
-    mutationFn: handleLogSymptom,
-    onSuccess: (data) => {
+    mutationFn: handleLogSymptom, // Server action
+    onSuccess: (data, variables) => { // variables = SymptomLogFormValues submitted
       toast({
         title: "Symptoms Logged",
-        description: data.message,
+        description: data.message, // Message from server action
       });
-      // Optionally, refetch progress data or update local state here
+      if (data.success && authUser) {
+        saveSymptomLog(authUser.id, variables); // Save to local storage on client
+        queryClient.invalidateQueries({ queryKey: ['symptomLogs', authUser.id] }); // Invalidate queries for ProgressCharts
+      }
       // Reset form default time for next entry
       const now = new Date();
       const offset = now.getTimezoneOffset();
@@ -54,6 +54,10 @@ export default function ProgressTrackingPage() {
   });
 
   const onSymptomSubmit = (data: SymptomLogFormValues) => {
+    if (!authUser) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to log symptoms." });
+      return;
+    }
     symptomLogMutation.mutate(data);
   };
 
@@ -115,7 +119,8 @@ export default function ProgressTrackingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            <ProgressCharts />
+            {authUser && <ProgressCharts userId={authUser.id} />}
+            {!authUser && <p className="text-muted-foreground text-center">Login to see your progress charts.</p>}
           </CardContent>
         </Card>
       </div>
@@ -125,3 +130,4 @@ export default function ProgressTrackingPage() {
     </div>
   );
 }
+

@@ -1,15 +1,16 @@
-
 // src/lib/authLocalStorage.ts
 'use client'; // Local storage is a client-side API
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
 import type { HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
+import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
 const USER_DETAILS_PREFIX = "nutriAIUserDetails_";
 const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
 const API_KEY_PREFIX = "nutriAIUserApiKey_";
 const HOME_DASHBOARD_CACHE_PREFIX = "nutriAIHomeDashboard_";
+const SYMPTOM_LOG_PREFIX = "nutriAISymptomLog_";
 
 
 export interface AuthUser {
@@ -33,6 +34,11 @@ export interface ChatMessage {
 export interface HomeDashboardCache {
   timestamp: number;
   data: HomeDashboardOutput;
+}
+
+export interface SymptomLogEntry extends SymptomLogFormValues {
+  id: string; // Unique ID for the log entry
+  loggedAt: string; // ISO string timestamp when the log was created by the user action
 }
 
 // --- Auth User ---
@@ -144,6 +150,37 @@ export function removeHomeDashboardData(userId: string): void {
   }
 }
 
+// --- Symptom Logs ---
+export function saveSymptomLog(userId: string, logEntry: SymptomLogFormValues): void {
+  if (typeof window !== 'undefined') {
+    const logs = getSymptomLogs(userId);
+    const newLog: SymptomLogEntry = {
+      ...logEntry,
+      id: `symptom_${new Date().getTime()}_${Math.random().toString(36).substring(2, 7)}`,
+      loggedAt: new Date().toISOString(),
+    };
+    logs.push(newLog);
+    // Sort logs by logTime descending (most recent first) before saving
+    logs.sort((a, b) => new Date(b.logTime).getTime() - new Date(a.logTime).getTime());
+    localStorage.setItem(`${SYMPTOM_LOG_PREFIX}${userId}`, JSON.stringify(logs));
+  }
+}
+
+export function getSymptomLogs(userId: string): SymptomLogEntry[] {
+  if (typeof window !== 'undefined') {
+    const logsStr = localStorage.getItem(`${SYMPTOM_LOG_PREFIX}${userId}`);
+    return logsStr ? JSON.parse(logsStr) : [];
+  }
+  return [];
+}
+
+export function removeSymptomLogs(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${SYMPTOM_LOG_PREFIX}${userId}`);
+  }
+}
+
+
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
     removeAuthUser();
@@ -152,6 +189,8 @@ export function clearUserSession(userId?: string): void {
         removeChatHistory(userId);
         removeApiKey(userId);
         removeHomeDashboardData(userId);
+        removeSymptomLogs(userId); // Added symptom logs removal
+        localStorage.removeItem(`onboardingComplete_${userId}`); // Remove onboarding flag
     }
 }
 
