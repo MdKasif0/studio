@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -23,7 +24,7 @@ import {
 import type { AccountSettingsFormData, ChangePasswordFormData, LoginFormData, SignUpFormData } from "@/lib/schemas/authSchemas";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 import { homeDashboardFlow, type HomeDashboardInput, type HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
-import { getAuthUser, saveSymptomLog } from "@/lib/authLocalStorage"; // Added saveSymptomLog
+import { getAuthUser, saveSymptomLog } from "@/lib/authLocalStorage";
 
 
 export async function handleDietaryAnalysis(
@@ -142,7 +143,7 @@ export async function handleLogin(data: LoginFormData): Promise<{ success: boole
   const testEmail = "testuser@example.com";
 
   if ((inputUsernameOrEmail === testUsername || inputUsernameOrEmail === testEmail) && data.password === "Password123!") {
-    return { success: true, message: "Login successful!", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
+    return { success: true, message: "Login successful! Redirecting...", user: { id: "user123", username: "testuser", email: "testuser@example.com" } };
   } else if (inputUsernameOrEmail === "error@example.com") {
      return { success: false, message: "Oops! A server error occurred during login. Please try again later." };
   } else {
@@ -170,10 +171,10 @@ export async function handleAccountUpdate(data: AccountSettingsFormData): Promis
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   if (data.username === "erroruser") {
-     return { success: false, message: "Simulated error: Username 'erroruser' cannot be used." };
+     return { success: false, message: "Sorry, the username 'erroruser' is unavailable. Please choose another." };
   }
   console.log("Account update simulated successfully for user:", data.username);
-  return { success: true, message: "Account updated successfully." };
+  return { success: true, message: "Your account details have been updated successfully." };
 }
 
 
@@ -182,57 +183,29 @@ export async function handleChangePasswordAction(data: ChangePasswordFormData): 
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   if (data.currentPassword === "wrongpassword") {
-     return { success: false, message: "Incorrect current password. Please try again." };
+     return { success: false, message: "The current password you entered is incorrect. Please try again." };
   }
   if (data.newPassword.length < 8) { 
-      return { success: false, message: "New password is too short (minimum 8 characters required by server)." };
+      return { success: false, message: "Your new password is too short. It needs to be at least 8 characters long." };
   }
   console.log("Password change simulated successfully.");
-  return { success: true, message: "Password changed successfully." };
+  return { success: true, message: "Your password has been changed successfully." };
 }
 
 export async function handleDeleteAccountAction(): Promise<{ success: boolean; message: string }> {
   console.log("Server Action: handleDeleteAccountAction called");
   await new Promise(resolve => setTimeout(resolve, 1500));
   console.log("Account deletion simulated successfully.");
-  return { success: true, message: "Account deleted successfully." };
+  return { success: true, message: "Your account has been successfully deleted." };
 }
 
 export async function handleLogSymptom(data: SymptomLogFormValues): Promise<{ success: boolean; message: string }> {
   console.log("Server Action: handleLogSymptom called with data:", data);
-  // This is a server action, but local storage is client-side.
-  // For the purpose of this simulation where backend is local and state is managed in browser,
-  // we'll assume this action can "instruct" the client to save.
-  // In a real app, this would be an API call that saves to a DB.
-  // The client would then update its local state/cache upon successful API response.
-  
-  // Simulate getting the current user (in a real app, this would come from session/auth context)
-  // For now, this action won't directly interact with local storage as it's 'use server'.
-  // The calling client component will handle local storage saving based on the result of this action.
-  // However, to fulfill the "save to local storage" requirement directly from action logic (as if it were client-side for simulation):
-  // This approach is a bit of a hack for "use server" context.
-  // The *ideal* way is client calls server action, server action returns, client updates.
-  // But to *ensure* it's "saved" as part of this action's flow as requested:
-  // We can't directly call client-side localStorage from a 'use server' file.
-
-  // The provided pattern is: client calls action, action returns, client updates.
-  // So, the actual saving to localStorage will occur in the client component that calls this.
-  // This server action will just validate and return a success/failure message.
-  // The client-side `symptomLogMutation.onSuccess` will then handle the local storage part.
-
   await new Promise(resolve => setTimeout(resolve, 800));
 
   if (data.mealName.toLowerCase().includes("trigger error")) {
-    return { success: false, message: "Simulated error logging symptoms. Please try again." };
+    return { success: false, message: "Oops! We couldn't log your symptoms right now. Please try again." };
   }
-
-  // The actual local storage saving needs to be initiated from the client side
-  // after this server action successfully completes.
-  // The client component (`ProgressTrackingPage`) calling `handleLogSymptom` 
-  // should use `saveSymptomLog` from `@/lib/authLocalStorage` in its `onSuccess` handler.
-  // For this simulation, we just return success.
-
   console.log("Symptom log data processed by server action for meal:", data.mealName);
-  return { success: true, message: "Symptoms processed successfully by server. Client should save to local storage." };
+  return { success: true, message: "Symptoms logged! This will help in refining future suggestions." };
 }
-
