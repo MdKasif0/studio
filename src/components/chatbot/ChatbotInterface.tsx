@@ -118,7 +118,17 @@ export function ChatbotInterface() {
       };
       speechRecognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
-        toast({ variant: "destructive", title: "Voice Input Error", description: event.error });
+        let description = "An unknown error occurred with voice input.";
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          description = "Microphone access was denied. Please enable microphone permissions in your browser settings for this site.";
+        } else if (event.error === 'no-speech') {
+          description = "No speech was detected. Please try again.";
+        } else if (event.error === 'audio-capture') {
+          description = "Audio capture failed. Ensure your microphone is working.";
+        } else if (event.error) {
+          description = `Error: ${event.error}.`;
+        }
+        toast({ variant: "destructive", title: "Voice Input Error", description: description });
         setIsListening(false);
       };
       speechRecognitionRef.current.onend = () => {
@@ -325,8 +335,19 @@ export function ChatbotInterface() {
       speechRecognitionRef.current.stop();
       setIsListening(false);
     } else {
-      speechRecognitionRef.current.start();
-      setIsListening(true);
+      try {
+        speechRecognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        // This catch might be redundant if onerror handles it, but good for immediate start errors
+        console.error("Error starting speech recognition:", error);
+        let description = "Could not start voice input. Please ensure microphone access is allowed.";
+        if (error instanceof Error && (error.name === 'NotAllowedError' || error.message.includes('not-allowed'))) {
+             description = "Microphone access was denied. Please enable microphone permissions in your browser settings for this site.";
+        }
+        toast({ variant: "destructive", title: "Voice Input Error", description });
+        setIsListening(false);
+      }
     }
   };
 
