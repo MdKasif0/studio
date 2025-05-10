@@ -1,101 +1,136 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useQueryClient } from "@tanstack/react-query"; // useMutation, useQuery are not directly used here anymore for dashboard
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-// import type { Metadata } from "next"; // Metadata is in layout or page specific layouts
 import { getAuthUser, getUserDetails, getApiKey, type AuthUser, type StoredUserDetails, saveHomeDashboardData, getHomeDashboardData, type HomeDashboardCache } from "@/lib/authLocalStorage";
 import { handleHomeDashboardUpdate } from "@/lib/actions";
 import type { HomeDashboardInput, HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 import { useToast } from "@/hooks/use-toast";
+import { OnboardingDialog } from '@/components/onboarding/OnboardingDialog';
 
-// export const metadata: Metadata = { ... }; // Metadata typically in layout.tsx or page-specific layouts
 
 export default function HomePage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [userDetails, setUserDetails] = useState<StoredUserDetails | null>(null);
   const [dashboardData, setDashboardData] = useState<HomeDashboardOutput | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
-  // const queryClient = useQueryClient(); // Not directly used for dashboard mutation trigger here
   const { toast } = useToast();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const fetchAndSetDashboardData = useCallback(async () => {
-    if (!authUser) {
-      setIsLoadingDashboard(false);
-      setDashboardData(null); // Clear dashboard data if no user
-      return;
-    }
-    
-    setIsLoadingDashboard(true);
-    const cachedData = getHomeDashboardData(authUser.id);
-    const now = new Date().getTime();
-
-    // Use cache if valid (e.g., < 15 minutes old)
-    if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
-      setDashboardData(cachedData.data);
-      setIsLoadingDashboard(false);
-      return;
-    }
-
-    // Fetch new data if no cache or cache is stale
-    try {
-      const userApiKey = getApiKey(authUser.id);
-      const currentLocalUserDetails = getUserDetails(authUser.id); // Get latest details for the call
-      setUserDetails(currentLocalUserDetails); // Also update local state if needed, though primarily for input construction
-
-      const input: HomeDashboardInput = {
-        userId: authUser.id,
-        userProfile: {
-          healthGoals: currentLocalUserDetails?.primaryHealthGoal || "general wellness",
-          dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ? 
-            Object.entries(currentLocalUserDetails.dietaryRestrictions)
-                  .filter(([, value]) => value === true)
-                  .map(([key]) => key)
-                  .join(', ') + (currentLocalUserDetails.dietaryRestrictions.other ? `, ${currentLocalUserDetails.dietaryRestrictions.other}` : '')
-            : "none",
-        },
-        currentDate: new Date().toISOString().split('T')[0],
-        ...(userApiKey && { apiKey: userApiKey }),
-      };
-      const data = await handleHomeDashboardUpdate(input);
-      setDashboardData(data);
-      saveHomeDashboardData(authUser.id, data);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-      toast({
-        variant: "destructive",
-        title: "Dashboard Error",
-        description: error instanceof Error ? error.message : "Could not load dashboard data.",
-      });
-      setDashboardData(cachedData ? cachedData.data : null); // Fallback to stale cache on error if available
-    } finally {
-      setIsLoadingDashboard(false);
-    }
-  }, [authUser, toast]); // Removed userDetails from here as it's fetched inside or should trigger re-fetch via authUser change
-
-  useEffect(() => {
+  const checkOnboardingStatus = useCallback(() => {
     const user = getAuthUser();
-    setAuthUser(user); // This will trigger the dependent useEffect for dashboard data
+    setAuthUser(user);
     if (user) {
-      const details = getUserDetails(user.id); // Initial fetch for local state if needed elsewhere
+      const details = getUserDetails(user.id);
       setUserDetails(details);
+      const onboardingComplete = localStorage.getItem(`onboardingComplete_${user.id}`);
+      if (!onboardingComplete) {
+        setShowOnboarding(true);
+      } else {
+        setShowOnboarding(false);
+      }
     } else {
-      setIsLoadingDashboard(false); // No user, stop loading
-      setDashboardData(null); // Clear dashboard if user logs out
+      setIsLoadingDashboard(false); 
+      setDashboardData(null); 
+      setShowOnboarding(false);
     }
-  }, []); // Runs once on mount to get initial auth state
+  }, []);
+
 
   useEffect(() => {
-    if (authUser) {
-      fetchAndSetDashboardData();
+    checkOnboardingStatus();
+  }, [checkOnboardingStatus]);
+
+
+  useEffect(() => {
+    if (!authUser || showOnboarding) { // Don't fetch dashboard data if not authenticated or onboarding is active
+      setIsLoadingDashboard(false);
+      setDashboardData(null);
+      return;
     }
-    // This effect runs when authUser changes or fetchAndSetDashboardData definition changes
-    // (which it does if authUser changes its identity).
-  }, [authUser, fetchAndSetDashboardData]);
+
+    const fetchData = async () => {
+      setIsLoadingDashboard(true);
+      const cachedData = getHomeDashboardData(authUser.id);
+      const now = new Date().getTime();
+
+      if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { // 15 minute cache
+        setDashboardData(cachedData.data);
+        setIsLoadingDashboard(false);
+        return;
+      }
+
+      try {
+        const userApiKey = getApiKey(authUser.id);
+        // Fetch userDetails again inside this async function to ensure freshness
+        const currentLocalUserDetails = getUserDetails(authUser.id);
+        // Update userDetails state if it's different, though it's primarily used for input construction here
+        if (JSON.stringify(currentLocalUserDetails) !== JSON.stringify(userDetails)) {
+          setUserDetails(currentLocalUserDetails);
+        }
+
+
+        const input: HomeDashboardInput = {
+          userId: authUser.id,
+          userProfile: {
+            healthGoals: currentLocalUserDetails?.primaryHealthGoal || "general wellness",
+            dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ?
+              Object.entries(currentLocalUserDetails.dietaryRestrictions)
+                    .filter(([, value]) => value === true || (typeof value === 'string' && value.length > 0)) // Handle 'other' string
+                    .map(([key, value]) => key === 'other' ? value : key)
+                    .filter(Boolean) // remove any empty strings that might result from 'other'
+                    .join(', ')
+              : "none",
+          },
+          currentDate: new Date().toISOString().split('T')[0],
+          ...(userApiKey && { apiKey: userApiKey }),
+        };
+        
+        // Ensure dietaryRestrictions is not empty if it was constructed to be empty
+        if (!input.userProfile.dietaryRestrictions) {
+            input.userProfile.dietaryRestrictions = "none";
+        }
+
+        const data = await handleHomeDashboardUpdate(input);
+        setDashboardData(data);
+        saveHomeDashboardData(authUser.id, data);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        const errorMessage = error instanceof Error ? error.message : "Could not load dashboard data. The AI assistant might be unavailable.";
+        // Only show toast if it's a new error, not for subsequent renders
+        if (!dashboardData && !isLoadingDashboard) { // Avoid spamming toasts
+             toast({
+                variant: "destructive",
+                title: "Dashboard Error",
+                description: errorMessage,
+            });
+        }
+        // Fallback to stale cache on error if available, otherwise null
+        setDashboardData(cachedData ? cachedData.data : null);
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+    };
+
+    fetchData();
+  }, [authUser, toast, showOnboarding, userDetails, isLoadingDashboard, dashboardData]); // Added dependencies
+
+  const handleOnboardingComplete = () => {
+    if (authUser) {
+      localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
+    }
+    setShowOnboarding(false);
+    // Optionally, refetch user details if onboarding updated them
+    if(authUser) {
+        const details = getUserDetails(authUser.id);
+        setUserDetails(details); // This will trigger the dashboard data fetch effect
+    }
+  };
 
 
   const features = [
@@ -215,6 +250,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full">
+      {showOnboarding && authUser && <OnboardingDialog user={authUser} onComplete={handleOnboardingComplete} />}
       <header className="text-center space-y-4 pt-4 md:pt-0">
         <Leaf className="mx-auto h-12 w-12 md:h-16 md:w-16 text-primary" />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
@@ -225,59 +261,61 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0">
-        <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
-        {isLoadingDashboard ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i} className="flex flex-col overflow-hidden shadow-md bg-card">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3 mb-1 h-7">
-                    <Loader2 className="h-6 w-6 text-accent animate-spin" />
-                     <span className="text-lg md:text-xl w-3/4 h-6 bg-muted rounded animate-pulse"></span>
-                  </div>
-                   <div className="h-16 bg-muted rounded animate-pulse"></div>
-                </CardHeader>
-                <CardContent className="mt-auto">
-                   <div className="h-9 w-full bg-muted rounded animate-pulse"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : authUser && dashboardData ? ( // Only show dashboard if user is logged in and data is available
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {dashboardSnippets.map((snippet) => (
-              <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3 mb-1">
-                    <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent" />
-                    <CardTitle className="text-lg md:text-xl">{snippet.title}</CardTitle>
-                  </div>
-                  <CardDescription className="text-card-foreground/80 h-16 text-sm">
-                    {snippet.getData(dashboardData)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="mt-auto">
-                  <Link href={snippet.link} passHref>
-                    <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
-                      {snippet.cta}
-                      <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : authUser && !dashboardData ? ( // User logged in, but no dashboard data (e.g., error)
-             <p className="text-center mt-6 text-md text-muted-foreground">
-                Could not load dashboard data. Please check your API key or try again later.
-            </p>
-        ) : ( // No user logged in
-            <p className="text-center mt-6 text-md text-muted-foreground">
-                Login to view your personalized dashboard.
-            </p>
-        )}
-      </section>
+      {!showOnboarding && (
+        <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0">
+          <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
+          {isLoadingDashboard ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="flex flex-col overflow-hidden shadow-md bg-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3 mb-1 h-7">
+                      <Loader2 className="h-6 w-6 text-accent animate-spin" />
+                       <span className="text-lg md:text-xl w-3/4 h-6 bg-muted rounded animate-pulse"></span>
+                    </div>
+                     <div className="h-16 bg-muted rounded animate-pulse"></div>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                     <div className="h-9 w-full bg-muted rounded animate-pulse"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : authUser && dashboardData ? ( 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {dashboardSnippets.map((snippet) => (
+                <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3 mb-1">
+                      <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent" />
+                      <CardTitle className="text-lg md:text-xl">{snippet.title}</CardTitle>
+                    </div>
+                    <CardDescription className="text-card-foreground/80 h-16 text-sm">
+                      {snippet.getData(dashboardData)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    <Link href={snippet.link} passHref>
+                      <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
+                        {snippet.cta}
+                        <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : authUser && !dashboardData ? ( 
+               <p className="text-center mt-6 text-md text-muted-foreground">
+                  Could not load dashboard data. Please check your API key or try again later.
+              </p>
+          ) : ( 
+              <p className="text-center mt-6 text-md text-muted-foreground">
+                  Login to view your personalized dashboard.
+              </p>
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="features-heading" className="w-full max-w-7xl px-2 sm:px-0">
         <h2 id="features-heading" className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
