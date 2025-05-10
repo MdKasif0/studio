@@ -188,8 +188,9 @@ export function ChatbotInterface() {
                   <Bot size={20} />
                 </AvatarFallback>
               </Avatar>
-            <div className="max-w-[70%] p-3 rounded-lg shadow bg-muted text-muted-foreground">
+            <div className="max-w-[70%] p-3 rounded-lg shadow bg-muted text-muted-foreground flex items-center space-x-2">
               <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">NutriAI is thinking...</span>
             </div>
           </div>
         )}
@@ -214,3 +215,4 @@ export function ChatbotInterface() {
     </div>
   );
 }
+

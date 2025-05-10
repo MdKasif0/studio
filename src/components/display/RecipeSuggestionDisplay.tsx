@@ -9,7 +9,7 @@ interface RecipeSuggestionDisplayProps {
 
 export function RecipeSuggestionDisplay({ data }: RecipeSuggestionDisplayProps) {
   return (
-    <Card className="mt-8 shadow-lg">
+    <Card className="mt-8 shadow-lg" data-ai-hint="cache results">
       <CardHeader>
         <CardTitle className="text-2xl">Recipe Alternatives</CardTitle>
       </CardHeader>
@@ -21,3 +21,4 @@ export function RecipeSuggestionDisplay({ data }: RecipeSuggestionDisplayProps) 
     </Card>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import type { AnalyzeDietaryHabitsOutput } from "@/ai/flows/analyze-dietary-habits";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,7 +11,7 @@ interface DietaryAnalysisDisplayProps {
 export function DietaryAnalysisDisplay({ data }: DietaryAnalysisDisplayProps) {
   return (
     <div className="space-y-6 mt-8">
-      <Card className="shadow-lg">
+      <Card className="shadow-lg" data-ai-hint="cache results">
         <CardHeader>
           <CardTitle className="text-2xl text-primary">Personalized Insights</CardTitle>
           <CardDescription>Understanding your current dietary patterns.</CardDescription>
@@ -21,7 +22,7 @@ export function DietaryAnalysisDisplay({ data }: DietaryAnalysisDisplayProps) {
           </ScrollArea>
         </CardContent>
       </Card>
-      <Card className="shadow-lg">
+      <Card className="shadow-lg" data-ai-hint="cache results">
         <CardHeader>
           <CardTitle className="text-2xl text-primary">Dietary Recommendations</CardTitle>
           <CardDescription>Actionable steps towards your health goals.</CardDescription>
@@ -33,7 +34,7 @@ export function DietaryAnalysisDisplay({ data }: DietaryAnalysisDisplayProps) {
         </CardContent>
       </Card>
       {data.nutritionTips && data.nutritionTips.length > 0 && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg" data-ai-hint="cache results">
           <CardHeader>
             <CardTitle className="text-2xl text-primary">Bonus Nutrition Tips</CardTitle>
             <CardDescription>Extra advice to support your journey.</CardDescription>
@@ -53,3 +54,4 @@ export function DietaryAnalysisDisplay({ data }: DietaryAnalysisDisplayProps) {
     </div>
   );
 }
+

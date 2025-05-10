@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { SuggestRecipeAlternativesInput } from "@/ai/flows/suggest-recipe-alternatives";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lightbulb } from "lucide-react"; // Added Lightbulb
 
 const formSchema = z.object({
   recipeName: z
@@ -112,13 +112,17 @@ export function RecipeAlternativesForm({ onSubmit, isPending }: RecipeAlternativ
            {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Suggesting...
+              Finding smart alternatives...
             </>
           ) : (
-            "Suggest Alternatives"
+            <>
+            <Lightbulb className="mr-2 h-4 w-4" />
+            Suggest Alternatives
+            </>
           )}
         </Button>
       </form>
     </Form>
   );
 }
+

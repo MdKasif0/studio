@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info } from "lucide-react";
+import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info, Settings } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getAuthUser, getUserDetails, getApiKey, type AuthUser, type StoredUserDetails, saveHomeDashboardData, getHomeDashboardData, type HomeDashboardCache } from "@/lib/authLocalStorage";
@@ -32,22 +33,19 @@ export default function HomePage() {
 
   const checkOnboardingStatus = useCallback(() => {
     const user = getAuthUser();
-    setAuthUser(user); // Ensure authUser is set at the beginning
+    setAuthUser(user);
     if (user) {
       const details = getUserDetails(user.id);
       setUserDetails(details);
       const onboardingComplete = localStorage.getItem(`onboardingComplete_${user.id}`);
       if (!onboardingComplete) {
         setShowOnboarding(true);
-        setIsLoadingDashboard(false); // Don't load dashboard if onboarding
+        setIsLoadingDashboard(false); 
         setDashboardData(null);
       } else {
         setShowOnboarding(false);
-        // Proceed to fetch dashboard data if onboarding is complete
-        // This will be handled by the other useEffect
       }
     } else {
-      // No user logged in
       setIsLoadingDashboard(false); 
       setDashboardData(null); 
       setShowOnboarding(false);
@@ -63,7 +61,6 @@ export default function HomePage() {
   useEffect(() => {
     if (!authUser || showOnboarding) { 
       setIsLoadingDashboard(false);
-      // setDashboardData(null); // Already handled in checkOnboardingStatus
       return;
     }
 
@@ -72,24 +69,27 @@ export default function HomePage() {
       const cachedData = getHomeDashboardData(authUser.id);
       const now = new Date().getTime();
 
-      // Cache valid for 15 minutes
       if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
-        setIsLoadingDashboard(false);
-        return;
+        // Still attempt to refresh in background if old, but show cached first
+        if (now - cachedData.timestamp > 5 * 60 * 1000) { // e.g. refresh if older than 5 mins
+           // No setIsLoadingDashboard(false) here, let the fetch below handle it
+        } else {
+           setIsLoadingDashboard(false);
+           return;
+        }
+      } else if (!cachedData) { // If no cache, show full loading state
+         setDashboardData(null); // Ensure no stale data shown
       }
+
 
       try {
         const userApiKey = getApiKey(authUser.id);
-        // Fetch latest user details for the API call, might have changed since initial load
         const currentLocalUserDetails = getUserDetails(authUser.id); 
         
-        // Update local userDetails state if it's different from what we have
-        // This primarily helps if userDetails were updated in another tab/session part.
         if (JSON.stringify(currentLocalUserDetails) !== JSON.stringify(userDetails)) {
           setUserDetails(currentLocalUserDetails); 
         }
-
 
         const input: HomeDashboardInput = {
           userId: authUser.id,
@@ -98,8 +98,8 @@ export default function HomePage() {
             dietaryRestrictions: currentLocalUserDetails?.dietaryRestrictions ?
               Object.entries(currentLocalUserDetails.dietaryRestrictions)
                     .filter(([, value]) => value === true || (typeof value === 'string' && value.length > 0)) 
-                    .map(([key, value]) => key === 'other' && typeof value === 'string' ? value : key) // Handle 'other' text
-                    .filter(Boolean) // Remove any empty/falsey values from map
+                    .map(([key, value]) => key === 'other' && typeof value === 'string' ? value : key)
+                    .filter(Boolean)
                     .join(', ')
               : "none",
           },
@@ -107,7 +107,6 @@ export default function HomePage() {
           ...(userApiKey && { apiKey: userApiKey }),
         };
         
-        // Ensure dietaryRestrictions is not an empty string if no restrictions were joined
         if (!input.userProfile.dietaryRestrictions) {
             input.userProfile.dietaryRestrictions = "none";
         }
@@ -119,17 +118,13 @@ export default function HomePage() {
         console.error("Failed to fetch dashboard data:", error);
         const errorMessage = error instanceof Error ? error.message : "Could not load dashboard data. The AI assistant might be unavailable.";
         
-        // Only show toast if not already loading and no dashboard data (or if error specifically mentions API key)
-        // Avoids spamming if component re-renders while still loading.
-        if (!isLoadingDashboard || (error instanceof Error && error.message.includes("API Key"))) {
+        if (!cachedData || (error instanceof Error && error.message.includes("API Key"))) {
            toast({
               variant: "destructive",
               title: "Dashboard Error",
               description: errorMessage,
           });
         }
-        
-        // Fallback to cached data if fetch fails but cache exists
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -137,8 +132,7 @@ export default function HomePage() {
     };
 
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [authUser, showOnboarding, toast]); // userDetails removed to prevent loop, API call fetches fresh details
+  }, [authUser, showOnboarding, toast, userDetails]); 
 
 
   const handleOnboardingComplete = () => {
@@ -146,13 +140,10 @@ export default function HomePage() {
       localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
     }
     setShowOnboarding(false);
-    setShowWelcomeTourMessage(true); // Trigger welcome message
-    // Refetch userDetails and trigger dashboard update
+    setShowWelcomeTourMessage(true); 
     if(authUser) {
         const details = getUserDetails(authUser.id);
-        setUserDetails(details); // Update state to reflect onboarding changes
-        // Explicitly trigger dashboard fetch again because showOnboarding changed
-        // The useEffect for dashboard data will pick this up.
+        setUserDetails(details); 
     }
   };
 
@@ -166,6 +157,7 @@ export default function HomePage() {
       cta: "Analyze My Diet",
       image: "https://picsum.photos/seed/dietanalysis/600/400",
       aiHint: "nutrition facts",
+      dataAiHint: "cache results"
     },
     {
       icon: Utensils,
@@ -175,6 +167,7 @@ export default function HomePage() {
       cta: "Create My Meal Plan",
       image: "https://picsum.photos/seed/mealplanadv/600/400",
       aiHint: "healthy meals",
+      dataAiHint: "cache results"
     },
     {
       icon: Replace,
@@ -184,6 +177,7 @@ export default function HomePage() {
       cta: "Find Alternatives",
       image: "https://picsum.photos/seed/recipealt/600/400",
       aiHint: "cooking ingredients",
+      dataAiHint: "cache results"
     },
     {
       icon: MessageSquareHeart,
@@ -314,13 +308,19 @@ export default function HomePage() {
       {!showOnboarding && (
         <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0">
           <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
-          {isLoadingDashboard ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="flex flex-col overflow-hidden shadow-md bg-card">
+          {isLoadingDashboard && !dashboardData ? ( // Show this only if loading and no data (cached or fresh)
+            <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[200px]">
+                <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+                <p className="text-lg font-medium text-foreground">Fetching your dashboard insights...</p>
+                <p className="text-sm text-muted-foreground">Just a moment while we prepare your personalized view.</p>
+            </div>
+          ) : isLoadingDashboard && dashboardData ? ( // Skeletons if loading new data but showing cached data
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard loading state">
+              {dashboardSnippets.map((snippet, i) => (
+                <Card key={snippet.title + i} className="flex flex-col overflow-hidden shadow-md bg-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-1 h-7">
-                      <Loader2 className="h-6 w-6 text-accent animate-spin" />
+                       <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent opacity-50" />
                        <span className="text-lg md:text-xl w-3/4 h-6 bg-muted rounded animate-pulse"></span>
                     </div>
                      <div className="h-16 bg-muted rounded animate-pulse"></div>
@@ -332,7 +332,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : authUser && dashboardData ? ( 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard content">
               {dashboardSnippets.map((snippet) => (
                 <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
                   <CardHeader className="pb-3">
@@ -374,7 +374,7 @@ export default function HomePage() {
         <h2 id="features-heading" className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {features.map((feature) => (
-            <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
+            <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card" data-ai-hint={feature.dataAiHint}>
               <div className="relative h-40 md:h-48 w-full">
                 <Image
                   src={feature.image}
@@ -424,6 +424,17 @@ export default function HomePage() {
             <p className="text-sm text-muted-foreground">Stay motivated with interactive tools, challenges, and resources that adapt with you.</p>
           </div>
         </div>
+      </section>
+
+       <section aria-labelledby="customize-dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0 text-center pb-8">
+        <Settings className="mx-auto h-8 w-8 text-primary mb-2" />
+        <h3 id="customize-dashboard-heading" className="text-xl md:text-2xl font-semibold text-foreground mb-2">Customize Your Experience</h3>
+        <p className="text-md text-muted-foreground max-w-xl mx-auto mb-3">
+          Soon, you&apos;ll be able to personalize your dashboard by pinning favorite recipes, reordering widgets, and more!
+        </p>
+        <Button variant="outline" disabled>
+          Customize Dashboard (Coming Soon)
+        </Button>
       </section>
     </div>
   );

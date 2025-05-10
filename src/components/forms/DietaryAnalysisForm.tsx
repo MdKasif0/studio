@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import type { AnalyzeDietaryHabitsInput } from "@/ai/flows/analyze-dietary-habits";
-import { Loader2 } from "lucide-react";
+import { Loader2, Brain } from "lucide-react"; // Added Brain
 
 const formSchema = z.object({
   dietaryHabits: z
@@ -144,13 +145,17 @@ export function DietaryAnalysisForm({ onSubmit, isPending }: DietaryAnalysisForm
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing...
+              Getting your personalized insights...
             </>
           ) : (
-            "Analyze My Diet"
+            <>
+            <Brain className="mr-2 h-4 w-4" />
+            Analyze My Diet
+            </>
           )}
         </Button>
       </form>
     </Form>
   );
 }
+

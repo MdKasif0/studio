@@ -80,7 +80,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={geistSans.variable}>
       <body
-        className={`font-sans antialiased`} // font-sans will use the --font-geist-sans variable
+        className={`font-sans antialiased`} 
+        data-ai-hint="offline PWA features" // Added hint for offline capabilities
       >
         <AppProviders>
           {/* AppLayout will now conditionally render its structure based on route */}
@@ -90,3 +91,4 @@ export default function RootLayout({
     </html>
   );
 }
+

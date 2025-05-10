@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { GenerateCustomMealPlanInput } from "@/ai/flows/generate-custom-meal-plan";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChefHat } from "lucide-react"; // Added ChefHat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
@@ -250,13 +251,17 @@ export function MealPlanForm({ onSubmit, isPending }: MealPlanFormProps) {
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating Plan...
+              Cooking up your meal plan...
             </>
           ) : (
-            "Generate Meal Plan"
+            <>
+            <ChefHat className="mr-2 h-4 w-4" />
+            Generate Meal Plan
+            </>
           )}
         </Button>
       </form>
     </Form>
   );
 }
+

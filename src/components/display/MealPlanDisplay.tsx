@@ -1,3 +1,4 @@
+
 import type { GenerateCustomMealPlanOutput } from "@/ai/flows/generate-custom-meal-plan";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ interface MealPlanDisplayProps {
 export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
   return (
     <div className="mt-8 space-y-6">
-      <Card className="shadow-lg">
+      <Card className="shadow-lg" data-ai-hint="cache results">
         <CardHeader>
           <CardTitle className="text-2xl text-primary">{data.mealPlanTitle || "Your Custom Meal Plan"}</CardTitle>
           <CardDescription>Here's a personalized plan crafted just for you.</CardDescription>
@@ -56,7 +57,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
       </Card>
 
       {data.shoppingList && data.shoppingList.length > 0 && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg" data-ai-hint="cache results">
           <CardHeader>
             <CardTitle className="text-xl flex items-center text-primary"><ListChecks className="mr-2 h-6 w-6"/>Shopping List</CardTitle>
           </CardHeader>
@@ -84,7 +85,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
       )}
 
       {data.preparationTips && data.preparationTips.length > 0 && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg" data-ai-hint="cache results">
           <CardHeader>
             <CardTitle className="text-xl flex items-center text-primary"><UtensilsCrossed className="mr-2 h-6 w-6" />Preparation Tips</CardTitle>
           </CardHeader>
@@ -102,3 +103,4 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     </div>
   );
 }
+
