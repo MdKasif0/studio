@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import type { GenerateCustomMealPlanOutput, GenerateCustomMealPlanInput } from "@/ai/flows/generate-custom-meal-plan"; // Assuming Meal is from here
@@ -11,6 +12,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import html2pdf from 'html2pdf.js';
 import { useToast } from "@/hooks/use-toast";
 import { getAuthUser, saveFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite, type AuthUser, type FavoriteRecipe } from "@/lib/authLocalStorage";
+import { cn } from "@/lib/utils"; // Added import for cn
 
 interface MealPlanDisplayProps {
   data: GenerateCustomMealPlanOutput;
