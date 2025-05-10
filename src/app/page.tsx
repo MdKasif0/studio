@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -55,6 +54,7 @@ export default function HomePage() {
   const [showWelcomeTourMessage, setShowWelcomeTourMessage] = useState(false);
   const [dailyStreak, setDailyStreak] = useState<DailyStreakData | null>(null);
   const [unlockedBadges, setUnlockedBadges] = useState<string[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // To manage initial loading animation
 
   const loadGamificationData = useCallback((userId: string) => {
     setDailyStreak(getDailyStreakData(userId));
@@ -94,8 +94,8 @@ export default function HomePage() {
     if (user) {
       const details = getUserDetails(user.id);
       setUserDetails(details);
-      loadGamificationData(user.id); // Load gamification data
-      checkWeeklySummary(user.id); // Check for weekly summary
+      loadGamificationData(user.id); 
+      checkWeeklySummary(user.id); 
 
       const onboardingComplete = localStorage.getItem(`onboardingComplete_${user.id}`);
       if (!onboardingComplete) {
@@ -121,6 +121,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!authUser || showOnboarding) { 
       setIsLoadingDashboard(false);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -131,14 +132,16 @@ export default function HomePage() {
 
       if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
+        // If cache is fresh enough, might not need to immediately show loader if background refresh is quick
         if (now - cachedData.timestamp > 5 * 60 * 1000) { 
-           // Background refresh
+           // Background refresh: keep showing cached data, loader is true
         } else {
-           setIsLoadingDashboard(false);
+           setIsLoadingDashboard(false); // Cache is very fresh, no loader needed unless explicit refresh
+           setIsInitialLoad(false);
            return;
         }
       } else if (!cachedData) { 
-         setDashboardData(null); 
+         setDashboardData(null); // No cache, ensure loader shows if fetching
       }
 
 
@@ -181,12 +184,14 @@ export default function HomePage() {
            toast({
               variant: "destructive",
               title: "Dashboard Error",
-              description: errorMessage,
+              description: `${errorMessage}${cachedData ? " Displaying last available data." : ""}`,
           });
         }
+        // If fetch fails, dashboardData will retain cachedData if it exists, or become null
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
+        setIsInitialLoad(false);
       }
     };
 
@@ -197,14 +202,18 @@ export default function HomePage() {
   const handleOnboardingComplete = () => {
     if (authUser) {
       localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
-      loadGamificationData(authUser.id); // Refresh gamification data
-      checkWeeklySummary(authUser.id); // Check summary after onboarding
+      loadGamificationData(authUser.id); 
+      checkWeeklySummary(authUser.id); 
     }
     setShowOnboarding(false);
     setShowWelcomeTourMessage(true); 
     if(authUser) {
         const details = getUserDetails(authUser.id);
         setUserDetails(details); 
+        setIsInitialLoad(true); // Reset initial load to re-trigger dashboard fetch
+        // Force a re-fetch of dashboard data by changing a dependency of the useEffect,
+        // e.g., by briefly setting authUser to null then back, or by having a dedicated refresh function.
+        // For now, the existing useEffect for dashboard data will re-run when userDetails changes.
     }
   };
 
@@ -387,22 +396,22 @@ export default function HomePage() {
                  </div>
             )}
           </div>
-          {isLoadingDashboard && !dashboardData ? ( 
+          { (isInitialLoad || (isLoadingDashboard && !dashboardData)) ? ( 
             <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[200px]">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
                 <p className="text-lg font-medium text-foreground">Fetching your dashboard insights...</p>
                 <p className="text-sm text-muted-foreground">Just a moment while we prepare your personalized view.</p>
             </div>
-          ) : isLoadingDashboard && dashboardData ? ( 
+          ) : isLoadingDashboard && dashboardData ? ( // Still loading but showing cached data (skeleton for updates)
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard loading state">
               {dashboardSnippets.map((snippet, i) => (
                 <Card key={snippet.title + i} className="flex flex-col overflow-hidden shadow-md bg-card">
                   <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-1 h-7">
+                    <div className="flex items-center gap-3 mb-1">
                        <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent opacity-50" />
-                       <span className="text-lg md:text-xl w-3/4 h-6 bg-muted rounded animate-pulse"></span>
+                       <CardTitle className="text-lg md:text-xl">{snippet.title}</CardTitle>
                     </div>
-                     <div className="h-16 bg-muted rounded animate-pulse"></div>
+                     <div className="h-16 bg-muted rounded animate-pulse mt-1"></div>
                   </CardHeader>
                   <CardContent className="mt-auto">
                      <div className="h-9 w-full bg-muted rounded animate-pulse"></div>
@@ -434,12 +443,13 @@ export default function HomePage() {
                 </Card>
               ))}
             </div>
-          ) : authUser && !dashboardData ? ( 
+          ) : authUser && !dashboardData && !isLoadingDashboard ? ( 
               <div className="text-center mt-6 text-md text-muted-foreground bg-card p-6 rounded-lg shadow">
                 <Info className="mx-auto h-10 w-10 text-destructive mb-3"/>
                  <p className="font-semibold text-lg">Dashboard Data Unavailable</p>
                  <p>Could not load dashboard data at this moment.</p>
-                 <p className="text-sm">Please check your API key in <Link href="/account" className="text-primary hover:underline">Account Settings</Link> or try again later.</p>
+                 <p className="text-sm">Please check your API key in <Link href="/account" className="text-primary hover:underline">Account Settings</Link> or try refreshing. If the problem persists, the AI assistant might be temporarily unavailable.</p>
+                 <Button onClick={() => setIsInitialLoad(true)} className="mt-3">Try Refresh</Button>
               </div>
           ) : ( 
               <p className="text-center mt-6 text-md text-muted-foreground">
@@ -487,7 +497,7 @@ export default function HomePage() {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute top-2 right-2 bg-background/70 hover:bg-background/90 text-foreground"
+                        className="absolute top-2 right-2 bg-background/70 hover:bg-background/90 text-foreground transform active:scale-90"
                         onClick={() => handleShareAchievement(`Just created a new meal plan with NutriAI!`)}
                         aria-label="Share meal plan achievement"
                     >

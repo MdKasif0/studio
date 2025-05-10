@@ -11,7 +11,7 @@ import type {
 } from "@/ai/flows/generate-custom-meal-plan";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, CalendarDays, WifiOff, Loader2 } from "lucide-react";
+import { Terminal, CalendarDays, WifiOff, Loader2, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   getAuthUser, 
@@ -27,12 +27,12 @@ export default function MealPlanPage() {
   const [cachedMealPlan, setCachedMealPlan] = useState<GenerateCustomMealPlanOutput | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isOffline, setIsOffline] = useState(false);
-  const [isLoadingCache, setIsLoadingCache] = useState(true);
+  const [isLoadingCache, setIsLoadingCache] = useState(true); // For initial cache check
 
   useEffect(() => {
     const user = getAuthUser();
     setAuthUser(user);
-
+    setIsLoadingCache(true);
     if (user) {
       const storedPlan = getCachedMealPlan(user.id);
       if (storedPlan) {
@@ -75,9 +75,11 @@ export default function MealPlanPage() {
       toast({
         variant: "destructive",
         title: "Meal Plan Generation Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: `${error.message || "An unexpected error occurred."}${cachedMealPlan ? " Displaying last saved plan." : ""}`,
       });
       // Do not clear mealPlanResult here, so if there was a cached one it can still be shown
+      // If an error occurs, mealPlanResult will be null from the handleSubmit reset,
+      // so `displayedPlan` will naturally fall back to `cachedMealPlan`.
     },
   });
 
@@ -106,7 +108,7 @@ export default function MealPlanPage() {
 
   const displayedPlan = mealPlanResult || cachedMealPlan;
 
-  if (isLoadingCache && typeof window !== 'undefined') {
+  if (isLoadingCache && typeof window !== 'undefined') { // Added check for window for SSR
     return (
       <div className="container mx-auto w-full md:max-w-3xl py-2 md:py-8 flex justify-center items-center min-h-[300px]">
         <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -125,7 +127,6 @@ export default function MealPlanPage() {
           </div>
           <CardDescription className="text-muted-foreground text-sm md:text-base">
             Tell us your needs, and our AI will craft a personalized meal plan for you.
-            {isOffline && " (Currently offline, showing last saved plan if available)"}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4 md:px-6 md:pb-6">
@@ -134,7 +135,7 @@ export default function MealPlanPage() {
               <WifiOff className="h-4 w-4" />
               <AlertTitle>You are currently offline.</AlertTitle>
               <AlertDescription>
-                New meal plans cannot be generated. Displaying your last saved meal plan if available.
+                New meal plans cannot be generated. {cachedMealPlan ? "Displaying your last saved meal plan." : "Please connect to the internet to generate a plan."}
               </AlertDescription>
             </Alert>
           )}
@@ -142,21 +143,25 @@ export default function MealPlanPage() {
             onSubmit={handleSubmit}
             isPending={mutation.isPending}
           />
-          {mutation.isError && !isOffline && ( // Only show mutation error if online, offline has its own message
+          {mutation.isError && !isOffline && ( 
              <Alert variant="destructive" className="mt-6 md:mt-8">
              <Terminal className="h-4 w-4" />
              <AlertTitle>Error Generating Plan</AlertTitle>
              <AlertDescription>
                 {mutation.error instanceof Error ? mutation.error.message : "An unknown error occurred."}
+                {cachedMealPlan && " Displaying your last successfully generated plan."}
              </AlertDescription>
            </Alert>
           )}
           {displayedPlan && <MealPlanDisplay data={displayedPlan} />}
           {!displayedPlan && !mutation.isPending && !isLoadingCache && (
-            <div className="mt-8 text-center text-muted-foreground">
-              <p>No meal plan to display yet. Fill out the form to generate one!</p>
-              {isOffline && <p>You are offline, so a new plan cannot be generated.</p>}
-            </div>
+            <Alert variant="default" className="mt-8 bg-blue-50 border-blue-300 text-blue-700 [&>svg]:text-blue-600">
+              <Info className="h-4 w-4" />
+              <AlertTitle>No Meal Plan Yet</AlertTitle>
+              <AlertDescription>
+                {isOffline ? "You are offline. Please connect to the internet to generate a meal plan." : "Fill out the form above to generate your personalized meal plan!"}
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
