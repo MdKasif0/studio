@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, ListChecks, ShoppingCart, UtensilsCrossed, Download, Loader2, CalendarPlus, Heart, Minus, Plus, Info } from "lucide-react";
+import { CheckCircle, ListChecks, ShoppingCart, UtensilsCrossed, Download, Loader2, CalendarPlus, Heart, Minus, Plus, Info, AlertTriangle, Clock3 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRef, useState, useEffect, useCallback } from "react";
 import html2pdf from 'html2pdf.js';
 import { useToast } from "@/hooks/use-toast";
-import { getAuthUser, saveFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite, type AuthUser, type FavoriteRecipe } from "@/lib/authLocalStorage";
-import { cn } from "@/lib/utils"; // Added import for cn
+import { getAuthUser, saveFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite, type AuthUser, type FavoriteRecipe, getUserDetails } from "@/lib/authLocalStorage";
+import { cn } from "@/lib/utils"; 
+import { commonDietaryRestrictions } from "@/lib/schemas/authSchemas";
+
 
 interface MealPlanDisplayProps {
   data: GenerateCustomMealPlanOutput;
@@ -30,6 +33,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
   const [favoriteRecipes, setFavoriteRecipes] = useState<string[]>([]);
   // State for recipe servings - a map of meal ID to current servings
   const [recipeServings, setRecipeServings] = useState<Record<string, number>>({});
+  const [userDietaryRestrictions, setUserDietaryRestrictions] = useState<Record<string, boolean | string>>({});
 
 
   const generateMealId = (dayIndex: number, mealIndex: number, meal: Meal) => {
@@ -39,22 +43,28 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
   useEffect(() => {
     const user = getAuthUser();
     setAuthUser(user);
-    if (user && data.dailyPlans) {
-      const initialFavs: string[] = [];
-      const initialServings: Record<string, number> = {};
-      data.dailyPlans.forEach((dailyPlan, dayIdx) => {
-        dailyPlan.meals.forEach((meal, mealIdx) => {
-          const mealId = generateMealId(dayIdx, mealIdx, meal);
-          if (isRecipeFavorite(user.id, mealId)) {
-            initialFavs.push(mealId);
-          }
-          initialServings[mealId] = meal.servings || 1; // Initialize servings
+    if (user) {
+      const details = getUserDetails(user.id);
+      if (details?.dietaryRestrictions) {
+        setUserDietaryRestrictions(details.dietaryRestrictions);
+      }
+      if (data.dailyPlans) {
+        const initialFavs: string[] = [];
+        const initialServings: Record<string, number> = {};
+        data.dailyPlans.forEach((dailyPlan, dayIdx) => {
+          dailyPlan.meals.forEach((meal, mealIdx) => {
+            const mealId = generateMealId(dayIdx, mealIdx, meal);
+            if (isRecipeFavorite(user.id, mealId)) {
+              initialFavs.push(mealId);
+            }
+            initialServings[mealId] = meal.servings || 1; // Initialize servings
+          });
         });
-      });
-      setFavoriteRecipes(initialFavs);
-      setRecipeServings(initialServings);
+        setFavoriteRecipes(initialFavs);
+        setRecipeServings(initialServings);
+      }
     }
-  }, [data, authUser?.id]); // Added authUser.id as dependency
+  }, [data, authUser?.id]);
 
   const handleToggleFavorite = useCallback((mealId: string, meal: Meal, dayName?: string) => {
     if (!authUser) {
@@ -112,17 +122,47 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     setRecipeServings(prev => {
       const currentServings = prev[mealId] || 1;
       const newServings = Math.max(1, currentServings + change); // Ensure servings don't go below 1
-      // TODO: If favorited, update servings in local storage too
       return { ...prev, [mealId]: newServings };
     });
-    // Here you would ideally re-calculate ingredient quantities if backend supported it
-    // For now, it's a UI change demonstrating the feature.
     toast({
         title: "Servings Adjusted (UI)",
-        description: "Actual ingredient scaling would require AI re-calculation or structured recipe data.",
+        description: "Actual ingredient scaling requires AI re-calculation or structured recipe data.",
         duration: 3000
     })
   };
+
+  const checkForAllergens = useCallback((meal: Meal): string[] => {
+    const allergensFound: string[] = [];
+    if (!userDietaryRestrictions || Object.keys(userDietaryRestrictions).length === 0) return allergensFound;
+
+    const recipeText = `${meal.dish.toLowerCase()} ${meal.recipe.toLowerCase()} ${meal.notes?.toLowerCase() || ''}`;
+    
+    const keywordsForAllergyMap: { [key in keyof typeof commonDietaryRestrictions]?: string[] } = {
+      nutAllergy: ['nut', 'nuts', 'almond', 'walnut', 'cashew', 'pecan', 'pistachio', 'macadamia', 'peanut'],
+      shellfishAllergy: ['shellfish', 'shrimp', 'crab', 'lobster', 'oyster', 'mussel', 'clam', 'prawn'],
+      soyAllergy: ['soy', 'tofu', 'tempeh', 'miso', 'edamame', 'soybean', 'soy sauce'],
+      // For dairyFree and glutenFree, if the user *IS* dairyFree/glutenFree, we look for ingredients that *AREN'T* these.
+      // This is tricky with simple keyword search. The AI should ideally handle this.
+      // For now, this alert focuses on positive matches for allergies.
+    };
+
+    Object.entries(userDietaryRestrictions).forEach(([restrictionKey, isActiveOrOther]) => {
+      if (isActiveOrOther === true && keywordsForAllergyMap[restrictionKey as keyof typeof keywordsForAllergyMap]) {
+        const keywords = keywordsForAllergyMap[restrictionKey as keyof typeof keywordsForAllergyMap]!;
+        if (keywords.some(keyword => recipeText.includes(keyword))) {
+          allergensFound.push(commonDietaryRestrictions[restrictionKey as keyof typeof commonDietaryRestrictions] || restrictionKey);
+        }
+      } else if (restrictionKey === 'other' && typeof isActiveOrOther === 'string' && isActiveOrOther.trim() !== "") {
+          const otherRestrictions = isActiveOrOther.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+          otherRestrictions.forEach(otherKeyword => {
+              if (recipeText.includes(otherKeyword)) {
+                  allergensFound.push(otherKeyword.charAt(0).toUpperCase() + otherKeyword.slice(1));
+              }
+          });
+      }
+    });
+    return [...new Set(allergensFound)]; 
+  }, [userDietaryRestrictions]);
 
 
   return (
@@ -155,8 +195,15 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                 <AccordionTrigger className="text-lg font-semibold hover:text-accent">
                   {dailyPlan.day}
                   {dailyPlan.estimatedCalories && (
-                     <span className="text-sm font-normal text-muted-foreground ml-2">
-                       (~{dailyPlan.estimatedCalories} kcal)
+                     <span className="text-sm font-normal text-muted-foreground ml-2 flex items-center">
+                       (~{dailyPlan.estimatedCalories} kcal
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild><Info className="inline h-3 w-3 ml-1 text-muted-foreground cursor-help" /></TooltipTrigger>
+                            <TooltipContent><p>Calories are estimates. Actual values may vary based on ingredients and portions.</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                       )
                      </span>
                   )}
                 </AccordionTrigger>
@@ -165,6 +212,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                     const mealId = generateMealId(dayIndex, mealIndex, meal);
                     const currentServings = recipeServings[mealId] || meal.servings || 1;
                     const isFav = favoriteRecipes.includes(mealId);
+                    const allergens = checkForAllergens(meal);
                     return (
                       <div key={mealId} className="p-3 rounded-md border border-border/70 bg-card/50 relative">
                         <Button
@@ -191,7 +239,23 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                             </Button>
                           </div>
                         </h4>
+                        {(meal.prepTime || meal.cookTime) && (
+                          <p className="text-xs text-muted-foreground mb-1.5 flex items-center">
+                            <Clock3 className="h-3.5 w-3.5 mr-1.5" />
+                            {meal.prepTime && <span>Prep: {meal.prepTime}</span>}
+                            {meal.prepTime && meal.cookTime && <span className="mx-1">|</span>}
+                            {meal.cookTime && <span>Cook: {meal.cookTime}</span>}
+                          </p>
+                        )}
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-1">{meal.recipe}</p>
+                        {allergens.length > 0 && (
+                          <div className="mt-2 mb-1 p-1.5 bg-destructive/10 border border-destructive/30 rounded-md">
+                            <p className="text-xs font-medium text-destructive flex items-center">
+                              <AlertTriangle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              Potential: Contains {allergens.join(', ')}
+                            </p>
+                          </div>
+                        )}
                         {meal.substitutions && meal.substitutions.length > 0 && (
                           <div className="mt-2 text-xs">
                             <p className="font-medium text-muted-foreground">Substitutions:</p>
@@ -208,9 +272,30 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                     <div className="mt-2 p-2 border-t border-dashed">
                       <p className="text-xs text-muted-foreground">
                         Est. Macros: 
-                        {dailyPlan.estimatedProtein && ` Protein: ${dailyPlan.estimatedProtein}`}
-                        {dailyPlan.estimatedCarbs && `, Carbs: ${dailyPlan.estimatedCarbs}`}
-                        {dailyPlan.estimatedFats && `, Fats: ${dailyPlan.estimatedFats}`}
+                        {dailyPlan.estimatedProtein && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild><span className="cursor-help"> Protein: {dailyPlan.estimatedProtein}</span></TooltipTrigger>
+                              <TooltipContent><p>Protein helps build and repair tissues, supports immune function, and more.</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {dailyPlan.estimatedCarbs && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild><span className="cursor-help">, Carbs: {dailyPlan.estimatedCarbs}</span></TooltipTrigger>
+                              <TooltipContent><p>Carbohydrates are the body's main source of energy.</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {dailyPlan.estimatedFats && (
+                           <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild><span className="cursor-help">, Fats: {dailyPlan.estimatedFats}</span></TooltipTrigger>
+                              <TooltipContent><p>Fats are essential for energy, hormone production, and nutrient absorption.</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </p>
                     </div>
                   )}

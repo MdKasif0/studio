@@ -44,6 +44,8 @@ const MealSchema = z.object({
   dish: z.string().describe("Name of the dish for this meal."),
   recipe: z.string().describe("Brief recipe or preparation instructions. Include measurements where appropriate. If known, add simple batch cooking tips like 'Can be made ahead and stored for X days' or 'Double the recipe and freeze half' where applicable."),
   servings: z.number().optional().describe("Number of servings this recipe makes. Default to 1 if not specified for family."),
+  prepTime: z.string().optional().describe("Estimated preparation time for the meal, e.g., '10 mins'."),
+  cookTime: z.string().optional().describe("Estimated cooking time for the meal, e.g., '20 mins'."),
   substitutions: z.array(z.string()).optional().describe("Suggest 1-2 common, simple ingredient substitutions for key ingredients if applicable (e.g., 'For gluten-free: use gluten-free pasta')."),
   notes: z.string().optional().describe("Any additional notes, like cooking tips, specific brand recommendations if crucial, or alternatives."),
 });
@@ -102,6 +104,7 @@ Meal Plan Requirements:
         *   Provide the dish name.
         *   Include a brief, easy-to-follow recipe or preparation instructions with measurements.
         *   Specify the number of servings the recipe makes (default to 1 if not a family plan, or adjust based on familyMembersDescription).
+        *   Specify estimated prep time (e.g., '10 mins') and cook time (e.g., '20 mins').
         *   Include 1-2 simple, common ingredient substitutions if applicable (e.g., "For gluten-free: use GF oats").
         *   Add any relevant notes (e.g., quick tips, make-ahead suggestions).
         *   If practical, include a batch cooking tip (e.g., "Make a double batch of the quinoa on Day 1 to use throughout the week." or "This soup freezes well for up to 3 months.").

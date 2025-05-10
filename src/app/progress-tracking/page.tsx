@@ -1,10 +1,12 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react'; 
 import { useMutation, useQueryClient } from "@tanstack/react-query"; 
 import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal, Sparkles, BadgeCheck, MessageCircleQuestion, Zap, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -18,11 +20,13 @@ import {
   saveDailyStreakData,
   addUnlockedBadge,
   getUnlockedBadges,
-  getSymptomLogs
+  getSymptomLogs,
+  hasAcknowledgedMedicalDisclaimer,
+  acknowledgeMedicalDisclaimer
 } from "@/lib/authLocalStorage"; 
 import { format, subDays, isSameDay, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription as ShadDialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog'; // Renamed DialogDescription to avoid conflict
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -52,6 +56,7 @@ export default function ProgressTrackingPage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isQuickLogDialogOpen, setIsQuickLogDialogOpen] = useState(false);
   const [quickLogMealName, setQuickLogMealName] = useState("");
+  const [showSymptomDisclaimer, setShowSymptomDisclaimer] = useState(false);
 
 
   useEffect(() => {
@@ -59,7 +64,12 @@ export default function ProgressTrackingPage() {
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset * 60 * 1000));
     setDefaultLogTime(localDate.toISOString().slice(0, 16));
-    setAuthUser(getAuthUser());
+    const user = getAuthUser();
+    setAuthUser(user);
+
+    if (user && !hasAcknowledgedMedicalDisclaimer(user.id, 'symptomLog')) {
+      setShowSymptomDisclaimer(true);
+    }
   }, []);
 
   const updateDailyStreak = (userId: string) => {
@@ -86,8 +96,8 @@ export default function ProgressTrackingPage() {
 
     // Check for streak-based badges
     if (streakData.currentStreak >= 3) {
-      const unlockedBadges = getUnlockedBadges(userId);
-      if (!unlockedBadges.includes(BADGES.CONSISTENCY_CRUSADER_3.name)) {
+      const unlockedBadgesList = getUnlockedBadges(userId);
+      if (!unlockedBadgesList.includes(BADGES.CONSISTENCY_CRUSADER_3.name)) {
         addUnlockedBadge(userId, BADGES.CONSISTENCY_CRUSADER_3.name);
         toast({
           title: "Badge Unlocked!",
@@ -120,9 +130,9 @@ export default function ProgressTrackingPage() {
 
   const checkMicroRewards = (userId: string) => {
     const logs = getSymptomLogs(userId);
-    const unlockedBadges = getUnlockedBadges(userId);
+    const unlockedBadgesList = getUnlockedBadges(userId);
 
-    if (logs.length >= 5 && !unlockedBadges.includes(BADGES.LOG_MASTER_5.name)) {
+    if (logs.length >= 5 && !unlockedBadgesList.includes(BADGES.LOG_MASTER_5.name)) {
       addUnlockedBadge(userId, BADGES.LOG_MASTER_5.name);
       toast({
         title: "Badge Unlocked!",
@@ -190,7 +200,6 @@ export default function ProgressTrackingPage() {
     const quickLogData: SymptomLogFormValues = {
       mealName: quickLogMealName,
       logTime: localTime,
-      // Optional fields can be empty or have default values
       energyLevel: "unchanged", 
       mood: "",
       digestiveSymptoms: "",
@@ -199,12 +208,31 @@ export default function ProgressTrackingPage() {
     };
     symptomLogMutation.mutate({ data: quickLogData, isQuickLog: true });
     setIsQuickLogDialogOpen(false);
-    setQuickLogMealName(""); // Reset for next time
+    setQuickLogMealName(""); 
   };
 
 
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8 md:space-y-12">
+      {showSymptomDisclaimer && authUser && (
+        <AlertDialog open={showSymptomDisclaimer} onOpenChange={(open) => { if (!open) setShowSymptomDisclaimer(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center"><ShieldAlert className="h-5 w-5 mr-2 text-destructive" /> Important Disclaimer</AlertDialogTitle>
+              <AlertDialogDescription>
+                Nutri AI symptom logging is for informational and educational purposes only and is not a medical tool. Always consult with a qualified healthcare provider for any health concerns or before making decisions related to your health.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                acknowledgeMedicalDisclaimer(authUser.id, 'symptomLog');
+                setShowSymptomDisclaimer(false);
+              }} className="bg-primary hover:bg-primary/90">I Understand</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <header className="text-center">
         <BarChart3 className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Track Your Progress & Well-being</h1>
@@ -215,7 +243,7 @@ export default function ProgressTrackingPage() {
 
       <Alert variant="destructive" className="max-w-3xl mx-auto bg-destructive/10 border-destructive/50 text-destructive [&>svg]:text-destructive">
         <ShieldAlert className="h-5 w-5" />
-        <AlertTitle className="font-semibold text-base md:text-lg">Important Disclaimer</AlertTitle>
+        <UiAlertTitle className="font-semibold text-base md:text-lg">Important Disclaimer</UiAlertTitle>
         <AlertDescription className="text-sm md:text-base">
           Nutri AI is designed for informational and educational purposes only. It is not a medical tool and should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider regarding any health concerns or before making any decisions related to your health or treatment.
         </AlertDescription>
@@ -231,9 +259,9 @@ export default function ProgressTrackingPage() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Quick Log Meal</DialogTitle>
-              <DialogDescription>
+              <ShadDialogDescription>
                 Quickly log a meal you just ate. Current time will be used.
-              </DialogDescription>
+              </ShadDialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
@@ -278,10 +306,10 @@ export default function ProgressTrackingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            {symptomLogMutation.isError && !symptomLogMutation.variables?.isQuickLog && ( // Only show form error if not a quick log error
+            {symptomLogMutation.isError && !symptomLogMutation.variables?.isQuickLog && ( 
                 <Alert variant="destructive" className="mb-4">
                   <Terminal className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
+                  <UiAlertTitle>Error</UiAlertTitle>
                   <AlertDescription>
                     {symptomLogMutation.error instanceof Error ? symptomLogMutation.error.message : "An unknown error occurred."}
                   </AlertDescription>

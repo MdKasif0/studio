@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info, Settings, Flame, BadgeCheck, CalendarCheck, Share2 } from "lucide-react";
+import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info, Settings, Flame, BadgeCheck, CalendarCheck, Share2, Lightbulb } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -43,6 +44,19 @@ const BADGE_ICONS: { [key: string]: React.ElementType } = {
   // Add more badge names and their icons here
 };
 
+const QUICK_TIPS = [
+  "Stay hydrated! Drink at least 8 glasses of water a day.",
+  "Incorporate a variety of colorful fruits and vegetables into your meals.",
+  "Prioritize protein in every meal to stay full and support muscle health.",
+  "Read nutrition labels to make informed food choices.",
+  "Practice mindful eating: slow down and savor your food.",
+  "Limit processed foods and opt for whole, unprocessed options.",
+  "Get enough sleep; it plays a crucial role in metabolism and appetite regulation.",
+  "Plan your meals ahead of time to avoid unhealthy impulse choices.",
+  "Don't skip breakfast; it can kickstart your metabolism for the day.",
+  "Listen to your body's hunger and fullness cues."
+];
+
 
 export default function HomePage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -55,6 +69,7 @@ export default function HomePage() {
   const [dailyStreak, setDailyStreak] = useState<DailyStreakData | null>(null);
   const [unlockedBadges, setUnlockedBadges] = useState<string[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true); // To manage initial loading animation
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
 
   const loadGamificationData = useCallback((userId: string) => {
     setDailyStreak(getDailyStreakData(userId));
@@ -132,16 +147,15 @@ export default function HomePage() {
 
       if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
-        // If cache is fresh enough, might not need to immediately show loader if background refresh is quick
         if (now - cachedData.timestamp > 5 * 60 * 1000) { 
-           // Background refresh: keep showing cached data, loader is true
+           // Background refresh
         } else {
-           setIsLoadingDashboard(false); // Cache is very fresh, no loader needed unless explicit refresh
+           setIsLoadingDashboard(false); 
            setIsInitialLoad(false);
            return;
         }
       } else if (!cachedData) { 
-         setDashboardData(null); // No cache, ensure loader shows if fetching
+         setDashboardData(null); 
       }
 
 
@@ -187,7 +201,6 @@ export default function HomePage() {
               description: `${errorMessage}${cachedData ? " Displaying last available data." : ""}`,
           });
         }
-        // If fetch fails, dashboardData will retain cachedData if it exists, or become null
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -210,12 +223,17 @@ export default function HomePage() {
     if(authUser) {
         const details = getUserDetails(authUser.id);
         setUserDetails(details); 
-        setIsInitialLoad(true); // Reset initial load to re-trigger dashboard fetch
-        // Force a re-fetch of dashboard data by changing a dependency of the useEffect,
-        // e.g., by briefly setting authUser to null then back, or by having a dedicated refresh function.
-        // For now, the existing useEffect for dashboard data will re-run when userDetails changes.
+        setIsInitialLoad(true); 
     }
   };
+
+  // Quick Tips Carousel Logic
+  useEffect(() => {
+    const tipInterval = setInterval(() => {
+      setCurrentTipIndex((prevIndex) => (prevIndex + 1) % QUICK_TIPS.length);
+    }, 7000); // Change tip every 7 seconds
+    return () => clearInterval(tipInterval);
+  }, []);
 
 
   const features = [
@@ -402,7 +420,7 @@ export default function HomePage() {
                 <p className="text-lg font-medium text-foreground">Fetching your dashboard insights...</p>
                 <p className="text-sm text-muted-foreground">Just a moment while we prepare your personalized view.</p>
             </div>
-          ) : isLoadingDashboard && dashboardData ? ( // Still loading but showing cached data (skeleton for updates)
+          ) : isLoadingDashboard && dashboardData ? ( 
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard loading state">
               {dashboardSnippets.map((snippet, i) => (
                 <Card key={snippet.title + i} className="flex flex-col overflow-hidden shadow-md bg-card">
@@ -456,14 +474,14 @@ export default function HomePage() {
                   Login to view your personalized dashboard.
               </p>
           )}
-           {unlockedBadges.length > 0 && (
+           {unlockedBadges.length > 0 && !showOnboarding && (
             <Card className="mt-6 shadow-md">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center"><Award className="mr-2 h-5 w-5 text-accent" />Your Achievements</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
                     {unlockedBadges.map(badgeName => {
-                       const IconComponent = BADGE_ICONS[badgeName] || Award; // Default icon
+                       const IconComponent = BADGE_ICONS[badgeName] || Award; 
                        return (
                         <Badge key={badgeName} variant="secondary" className="py-1 px-3 text-sm bg-primary/10 text-primary border-primary/30">
                             <IconComponent className="h-4 w-4 mr-1.5" />
@@ -472,6 +490,20 @@ export default function HomePage() {
                        );
                     })}
                 </CardContent>
+            </Card>
+          )}
+          {!showOnboarding && authUser && (
+            <Card className="mt-6 shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Quick Nutrition Tip
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground italic transition-opacity duration-700 ease-in-out" key={currentTipIndex}>
+                  {QUICK_TIPS[currentTipIndex]}
+                </p>
+              </CardContent>
             </Card>
           )}
         </section>
@@ -493,7 +525,7 @@ export default function HomePage() {
                   priority={index < 3} 
                   loading={index < 3 ? "eager" : "lazy"}
                 />
-                {feature.title === "Custom Meal Plan Generation" && ( // Example share button
+                {feature.title === "Custom Meal Plan Generation" && ( 
                     <Button 
                         variant="ghost" 
                         size="icon" 

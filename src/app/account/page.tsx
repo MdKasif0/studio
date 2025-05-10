@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut, KeySquare } from "lucide-react";
+import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut, KeySquare, ShieldAlert } from "lucide-react";
 import { AccountForm } from "@/components/account/AccountForm";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import type { AccountSettingsFormData, ChangePasswordFormData } from "@/lib/schemas/authSchemas";
@@ -21,10 +21,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTitle as RadixAlertDialogTitle, // Renamed to avoid conflict
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription as UiAlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; // Renamed AlertDescription
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
@@ -36,7 +35,9 @@ import {
   type AuthUser,
   saveApiKey,
   getApiKey,
-  removeApiKey
+  removeApiKey,
+  hasAcknowledgedMedicalDisclaimer,
+  acknowledgeMedicalDisclaimer
 } from '@/lib/authLocalStorage';
 import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ export default function AccountPage() {
 
   const [userApiKeyInput, setUserApiKeyInput] = useState("");
   const [currentApiKeyDisplay, setCurrentApiKeyDisplay] = useState<string | null>(null);
+  const [showAccountDisclaimer, setShowAccountDisclaimer] = useState(false);
 
   const maskApiKey = (key: string | null): string | null => {
     if (!key) return null;
@@ -70,6 +72,11 @@ export default function AccountPage() {
       const storedDetails = getUserDetails(currentAuthUser.id);
       if (storedDetails) {
         setUserDetails(storedDetails);
+        // Check for disclaimer after loading details
+        const hasRestrictions = Object.values(storedDetails.dietaryRestrictions || {}).some(val => val === true || (typeof val === 'string' && val.length > 0));
+        if (hasRestrictions && !hasAcknowledgedMedicalDisclaimer(currentAuthUser.id, 'restrictions')) {
+          setShowAccountDisclaimer(true);
+        }
       } else {
         setUserDetails({
           primaryHealthGoal: "Improve Overall Health",
@@ -79,7 +86,7 @@ export default function AccountPage() {
       }
       const storedApiKey = getApiKey(currentAuthUser.id);
       setCurrentApiKeyDisplay(maskApiKey(storedApiKey));
-      if (storedApiKey) setUserApiKeyInput(storedApiKey); // Pre-fill input if key exists
+      if (storedApiKey) setUserApiKeyInput(storedApiKey); 
     }
     setIsLoadingData(false);
   }, []);
@@ -118,8 +125,16 @@ export default function AccountPage() {
           profilePictureDataUrl: userDetails?.profilePictureDataUrl, 
         };
         saveUserDetails(authUser.id, newDetails);
-        setUserDetails(newDetails);
+        setUserDetails(newDetails); // This will trigger the useEffect for disclaimer check if restrictions changed
         toast({ title: "Profile Updated", description: response.message });
+
+        const restrictionsChanged = JSON.stringify(userDetails?.dietaryRestrictions) !== JSON.stringify(submittedData.dietaryRestrictions);
+        const hasNewRestrictions = Object.values(submittedData.dietaryRestrictions || {}).some(val => val === true || (typeof val === 'string' && val.length > 0));
+
+        if (restrictionsChanged && hasNewRestrictions && !hasAcknowledgedMedicalDisclaimer(authUser.id, 'restrictions')) {
+          setShowAccountDisclaimer(true);
+        }
+
       } else {
          toast({ variant: "destructive", title: "Update Failed", description: response.message });
       }
@@ -220,6 +235,24 @@ export default function AccountPage() {
 
   return (
     <div className="container mx-auto py-4 md:py-8 space-y-8">
+       {showAccountDisclaimer && authUser && (
+        <AlertDialog open={showAccountDisclaimer} onOpenChange={(open) => { if (!open) setShowAccountDisclaimer(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <RadixAlertDialogTitle className="flex items-center"><ShieldAlert className="h-5 w-5 mr-2 text-destructive" /> Important Disclaimer</RadixAlertDialogTitle>
+              <AlertDialogDescription>
+                Information regarding dietary restrictions is used for personalization. Nutri AI is not a medical tool. Always consult a healthcare provider for health concerns or before making health-related decisions.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                acknowledgeMedicalDisclaimer(authUser.id, 'restrictions');
+                setShowAccountDisclaimer(false);
+              }} className="bg-primary hover:bg-primary/90">I Understand</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       <header className="text-center">
         <User className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Account Settings</h1>
@@ -276,7 +309,7 @@ export default function AccountPage() {
             <Alert variant="destructive" className="mb-4">
               <Terminal className="h-4 w-4" />
               <UiAlertTitle>Error</UiAlertTitle>
-              <AlertDescription>{profileUpdateMutation.error.message}</AlertDescription>
+              <UiAlertDescription>{profileUpdateMutation.error.message}</UiAlertDescription>
             </Alert>
           )}
           <AccountForm 
@@ -299,7 +332,7 @@ export default function AccountPage() {
             <Label htmlFor="gemini-api-key">Your Gemini API Key</Label>
             <Input 
               id="gemini-api-key" 
-              type="password" // Use password type to mask input by default
+              type="password" 
               value={userApiKeyInput}
               onChange={(e) => setUserApiKeyInput(e.target.value)}
               placeholder="Enter your Gemini API Key" 
@@ -365,7 +398,7 @@ export default function AccountPage() {
                    <Alert variant="destructive" className="mt-2 mb-4">
                      <Terminal className="h-4 w-4" />
                      <UiAlertTitle>Error</UiAlertTitle>
-                     <AlertDescription>{passwordChangeMutation.error.message}</AlertDescription>
+                     <UiAlertDescription>{passwordChangeMutation.error.message}</UiAlertDescription>
                    </Alert>
                 )}
                 <ChangePasswordForm onSubmit={onChangePasswordSubmit} isPending={passwordChangeMutation.isPending} />
@@ -394,7 +427,7 @@ export default function AccountPage() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <RadixAlertDialogTitle>Are you absolutely sure?</RadixAlertDialogTitle>
                 <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete your account and remove your data from our servers (simulated for local storage).
                 </AlertDialogDescription>
@@ -411,7 +444,7 @@ export default function AccountPage() {
              <Alert variant="destructive" className="mt-4">
                <Terminal className="h-4 w-4" />
                <UiAlertTitle>Error</UiAlertTitle>
-               <AlertDescription>{deleteAccountMutation.error.message}</AlertDescription>
+               <UiAlertDescription>{deleteAccountMutation.error.message}</UiAlertDescription>
              </Alert>
           )}
           <p className="text-xs text-muted-foreground mt-2 text-center">

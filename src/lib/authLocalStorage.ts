@@ -17,6 +17,7 @@ const DAILY_STREAK_PREFIX = "nutriAIDailyStreak_";
 const UNLOCKED_BADGES_PREFIX = "nutriAIUnlockedBadges_";
 const LAST_WEEKLY_SUMMARY_PREFIX = "nutriAILastWeeklySummary_";
 const FAVORITE_RECIPES_PREFIX = "nutriAIFavoriteRecipes_";
+const MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX = "nutriAIMedicalDisclaimerAcknowledged_";
 
 
 export interface AuthUser {
@@ -356,6 +357,20 @@ export function removeAllFavoriteRecipes(userId: string): void {
   }
 }
 
+// --- Medical Disclaimer Acknowledgement ---
+export function hasAcknowledgedMedicalDisclaimer(userId: string, context: 'symptomLog' | 'restrictions'): boolean {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}${context}_${userId}`) === 'true';
+  }
+  return false; // Default to false if not client-side or not set
+}
+
+export function acknowledgeMedicalDisclaimer(userId: string, context: 'symptomLog' | 'restrictions'): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}${context}_${userId}`, 'true');
+  }
+}
+
 
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
@@ -372,5 +387,8 @@ export function clearUserSession(userId?: string): void {
         removeLastWeeklySummaryDate(userId);
         removeAllFavoriteRecipes(userId); // Clear favorites on logout
         localStorage.removeItem(`onboardingComplete_${userId}`);
+        // Clear disclaimer acknowledgements on logout
+        localStorage.removeItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}symptomLog_${userId}`);
+        localStorage.removeItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}restrictions_${userId}`);
     }
 }
