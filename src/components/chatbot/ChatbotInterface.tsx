@@ -12,6 +12,7 @@ import { CornerDownLeft, Loader2, User, Bot } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAuthUser, saveChatHistory, getChatHistory, type ChatMessage, type AuthUser, getApiKey, getUserDetails, type StoredUserDetails } from "@/lib/authLocalStorage";
+import { cn } from "@/lib/utils";
 
 
 export function ChatbotInterface() {
@@ -130,12 +131,14 @@ export function ChatbotInterface() {
   return (
     <div className="flex flex-col h-full bg-card border rounded-lg shadow-inner">
       <ScrollArea className="flex-grow p-4 space-y-4" ref={scrollAreaRef}>
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <div
             key={message.id}
-            className={`flex items-end space-x-2 ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={cn(
+              "flex items-end space-x-2",
+              message.role === "user" ? "justify-end" : "justify-start",
+              index > 0 && "animate-in fade-in duration-500" // Apply fade-in to new messages
+            )}
           >
             {message.role === "model" && (
               <Avatar className="h-8 w-8 self-start">
@@ -154,9 +157,9 @@ export function ChatbotInterface() {
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               {message.role === "model" && message.suggestions && message.suggestions.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-muted-foreground/20">
-                  {message.suggestions.map((suggestion, index) => (
+                  {message.suggestions.map((suggestion, idx) => (
                     <Button
-                      key={index}
+                      key={idx}
                       variant="ghost"
                       size="sm"
                       className="text-xs text-left justify-start w-full mt-1 hover:bg-background/10"
@@ -179,7 +182,7 @@ export function ChatbotInterface() {
           </div>
         ))}
         {mutation.isPending && (
-          <div className="flex items-end space-x-2 justify-start">
+          <div className="flex items-end space-x-2 justify-start animate-in fade-in duration-500">
              <Avatar className="h-8 w-8 self-start">
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   <Bot size={20} />
