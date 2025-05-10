@@ -1,25 +1,54 @@
+
 "use client";
 
-import React, { useState, useEffect } from 'react'; // Added useState, useEffect
-import { useMutation, useQueryClient } from "@tanstack/react-query"; // Added useQueryClient
+import React, { useState, useEffect } from 'react'; 
+import { useMutation, useQueryClient } from "@tanstack/react-query"; 
 import { SymptomLogForm } from "@/components/forms/SymptomLogForm";
 import { ProgressCharts } from "@/components/display/ProgressCharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal } from "lucide-react";
+import { Activity, BarChart3, FilePlus2, ShieldAlert, Terminal, Sparkles, BadgeCheck, MessageCircleQuestion } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleLogSymptom } from "@/lib/actions";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
-import { getAuthUser, saveSymptomLog, type AuthUser } from "@/lib/authLocalStorage"; // Added getAuthUser, saveSymptomLog, AuthUser
+import { 
+  getAuthUser, 
+  saveSymptomLog, 
+  type AuthUser,
+  getDailyStreakData,
+  saveDailyStreakData,
+  addUnlockedBadge,
+  getUnlockedBadges,
+  getSymptomLogs
+} from "@/lib/authLocalStorage"; 
+import { format, subDays, isSameDay, parseISO } from 'date-fns';
+
+const NUTRITION_FUN_FACTS = [
+  "Avocados are fruits, not vegetables!",
+  "Broccoli contains more vitamin C than oranges.",
+  "Almonds are a member of the peach family.",
+  "Honey never spoils.",
+  "An apple a day might keep the doctor away, but good hydration is key too!",
+  "Quinoa is a complete protein, containing all nine essential amino acids.",
+  "Dark chocolate (70% cocoa or higher) is rich in antioxidants.",
+  "Bell peppers have different nutrient profiles based on their color.",
+  "Oats can help lower cholesterol levels.",
+  "Eating a variety of colorful fruits and vegetables ensures a wide range of nutrients."
+];
+
+const BADGES = {
+  LOG_MASTER_5: { name: "Log Master (5)", icon: BadgeCheck, description: "Logged 5 meals!" },
+  CONSISTENCY_CRUSADER_3: { name: "Consistency Crusader (3 Day Streak)", icon: Sparkles, description: "Logged meals 3 days in a row!"}
+};
+
 
 export default function ProgressTrackingPage() {
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // For potential cache invalidation/refetch
+  const queryClient = useQueryClient(); 
   const [defaultLogTime, setDefaultLogTime] = React.useState<string | undefined>(undefined);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    // Set default log time for the form when component mounts on client
     const now = new Date();
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset * 60 * 1000));
@@ -27,18 +56,96 @@ export default function ProgressTrackingPage() {
     setAuthUser(getAuthUser());
   }, []);
 
+  const updateDailyStreak = (userId: string) => {
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    
+    let streakData = getDailyStreakData(userId);
+    
+    if (streakData.lastLogDate === todayStr) {
+      // Already logged today, streak doesn't change
+    } else {
+      const yesterday = subDays(today, 1);
+      const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+      
+      if (streakData.lastLogDate === yesterdayStr) {
+        streakData.currentStreak += 1;
+      } else {
+        streakData.currentStreak = 1; // Reset streak
+      }
+      streakData.lastLogDate = todayStr;
+    }
+    
+    saveDailyStreakData(userId, streakData);
+
+    // Check for streak-based badges
+    if (streakData.currentStreak >= 3) {
+      const unlockedBadges = getUnlockedBadges(userId);
+      if (!unlockedBadges.includes(BADGES.CONSISTENCY_CRUSADER_3.name)) {
+        addUnlockedBadge(userId, BADGES.CONSISTENCY_CRUSADER_3.name);
+        toast({
+          title: "Badge Unlocked!",
+          description: (
+            <div className="flex items-center">
+              <BADGES.CONSISTENCY_CRUSADER_3.icon className="h-5 w-5 mr-2 text-accent" />
+              <span>{BADGES.CONSISTENCY_CRUSADER_3.description}</span>
+            </div>
+          ),
+          duration: 5000,
+        });
+      }
+    }
+    return streakData;
+  };
+
+  const showFunFact = () => {
+    const randomFact = NUTRITION_FUN_FACTS[Math.floor(Math.random() * NUTRITION_FUN_FACTS.length)];
+    toast({
+      title: (
+        <div className="flex items-center">
+          <MessageCircleQuestion className="h-5 w-5 mr-2 text-primary" />
+          <span>Nutrition Fun Fact!</span>
+        </div>
+      ),
+      description: randomFact,
+      duration: 7000,
+    });
+  };
+
+  const checkMicroRewards = (userId: string) => {
+    const logs = getSymptomLogs(userId);
+    const unlockedBadges = getUnlockedBadges(userId);
+
+    if (logs.length >= 5 && !unlockedBadges.includes(BADGES.LOG_MASTER_5.name)) {
+      addUnlockedBadge(userId, BADGES.LOG_MASTER_5.name);
+      toast({
+        title: "Badge Unlocked!",
+        description: (
+          <div className="flex items-center">
+            <BADGES.LOG_MASTER_5.icon className="h-5 w-5 mr-2 text-accent" />
+            <span>{BADGES.LOG_MASTER_5.description}</span>
+          </div>
+        ),
+        duration: 5000,
+      });
+    }
+  };
+
+
   const symptomLogMutation = useMutation({
-    mutationFn: handleLogSymptom, // Server action
-    onSuccess: (data, variables) => { // variables = SymptomLogFormValues submitted
+    mutationFn: handleLogSymptom, 
+    onSuccess: (data, variables) => { 
       toast({
         title: "Symptoms Logged",
-        description: data.message, // Message from server action
+        description: data.message, 
       });
       if (data.success && authUser) {
-        saveSymptomLog(authUser.id, variables); // Save to local storage on client
-        queryClient.invalidateQueries({ queryKey: ['symptomLogs', authUser.id] }); // Invalidate queries for ProgressCharts
+        saveSymptomLog(authUser.id, variables); 
+        updateDailyStreak(authUser.id);
+        showFunFact();
+        checkMicroRewards(authUser.id);
+        queryClient.invalidateQueries({ queryKey: ['symptomLogs', authUser.id] }); 
       }
-      // Reset form default time for next entry
       const now = new Date();
       const offset = now.getTimezoneOffset();
       const localDate = new Date(now.getTime() - (offset * 60 * 1000));
@@ -103,7 +210,7 @@ export default function ProgressTrackingPage() {
             <SymptomLogForm 
               onSubmit={onSymptomSubmit} 
               isPending={symptomLogMutation.isPending}
-              initialDateTime={defaultLogTime} // Pass this to set form's default time
+              initialDateTime={defaultLogTime} 
             />
           </CardContent>
         </Card>

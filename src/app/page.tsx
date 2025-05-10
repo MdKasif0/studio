@@ -1,12 +1,28 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info, Settings } from "lucide-react";
+import { ClipboardList, Utensils, Replace, ArrowRight, Leaf, MessageSquareHeart, Award, Users, BookOpen, BarChart3, HeartHandshake, Apple, ShoppingCart, Activity, Loader2, Info, Settings, Flame, BadgeCheck, CalendarCheck, Share2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { getAuthUser, getUserDetails, getApiKey, type AuthUser, type StoredUserDetails, saveHomeDashboardData, getHomeDashboardData, type HomeDashboardCache } from "@/lib/authLocalStorage";
+import { 
+  getAuthUser, 
+  getUserDetails, 
+  getApiKey, 
+  type AuthUser, 
+  type StoredUserDetails, 
+  saveHomeDashboardData, 
+  getHomeDashboardData, 
+  type HomeDashboardCache,
+  getDailyStreakData,
+  type DailyStreakData,
+  getUnlockedBadges,
+  getLastWeeklySummaryDate,
+  saveLastWeeklySummaryDate,
+  getSymptomLogs
+} from "@/lib/authLocalStorage";
 import { handleHomeDashboardUpdate } from "@/lib/actions";
 import type { HomeDashboardInput, HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +35,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { format, differenceInDays, parseISO } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+
+const BADGE_ICONS: { [key: string]: React.ElementType } = {
+  "Log Master (5)": BadgeCheck,
+  "Consistency Crusader (3 Day Streak)": Flame,
+  // Add more badge names and their icons here
+};
 
 
 export default function HomePage() {
@@ -29,6 +53,40 @@ export default function HomePage() {
   const { toast } = useToast();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showWelcomeTourMessage, setShowWelcomeTourMessage] = useState(false);
+  const [dailyStreak, setDailyStreak] = useState<DailyStreakData | null>(null);
+  const [unlockedBadges, setUnlockedBadges] = useState<string[]>([]);
+
+  const loadGamificationData = useCallback((userId: string) => {
+    setDailyStreak(getDailyStreakData(userId));
+    setUnlockedBadges(getUnlockedBadges(userId));
+  }, []);
+
+  const checkWeeklySummary = useCallback((userId: string) => {
+    const lastSummaryDateStr = getLastWeeklySummaryDate(userId);
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+
+    if (!lastSummaryDateStr || differenceInDays(today, parseISO(lastSummaryDateStr)) >= 7) {
+      const logs = getSymptomLogs(userId);
+      // Simple summary metric for now, can be expanded
+      const mealsLoggedLastWeek = logs.filter(log => 
+        differenceInDays(today, parseISO(log.logTime)) <= 7
+      ).length;
+
+      toast({
+        title: (
+            <div className="flex items-center">
+                <CalendarCheck className="h-5 w-5 mr-2 text-primary" />
+                <span>Weekly Summary!</span>
+            </div>
+        ),
+        description: `You've logged ${mealsLoggedLastWeek} meals in the past week. Keep up the great work!`,
+        duration: 8000,
+      });
+      saveLastWeeklySummaryDate(userId, todayStr);
+    }
+  }, [toast]);
+
 
   const checkOnboardingStatus = useCallback(() => {
     const user = getAuthUser();
@@ -36,6 +94,9 @@ export default function HomePage() {
     if (user) {
       const details = getUserDetails(user.id);
       setUserDetails(details);
+      loadGamificationData(user.id); // Load gamification data
+      checkWeeklySummary(user.id); // Check for weekly summary
+
       const onboardingComplete = localStorage.getItem(`onboardingComplete_${user.id}`);
       if (!onboardingComplete) {
         setShowOnboarding(true);
@@ -49,7 +110,7 @@ export default function HomePage() {
       setDashboardData(null); 
       setShowOnboarding(false);
     }
-  }, []);
+  }, [loadGamificationData, checkWeeklySummary]);
 
 
   useEffect(() => {
@@ -70,15 +131,14 @@ export default function HomePage() {
 
       if (cachedData && (now - cachedData.timestamp < 15 * 60 * 1000)) { 
         setDashboardData(cachedData.data);
-        // Still attempt to refresh in background if old, but show cached first
-        if (now - cachedData.timestamp > 5 * 60 * 1000) { // e.g. refresh if older than 5 mins
-           // No setIsLoadingDashboard(false) here, let the fetch below handle it
+        if (now - cachedData.timestamp > 5 * 60 * 1000) { 
+           // Background refresh
         } else {
            setIsLoadingDashboard(false);
            return;
         }
-      } else if (!cachedData) { // If no cache, show full loading state
-         setDashboardData(null); // Ensure no stale data shown
+      } else if (!cachedData) { 
+         setDashboardData(null); 
       }
 
 
@@ -124,7 +184,6 @@ export default function HomePage() {
               description: errorMessage,
           });
         }
-        // If there's an error, prefer showing cached data if available, otherwise null
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -132,12 +191,14 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [authUser, showOnboarding, toast, userDetails]); // Added userDetails to dependencies
+  }, [authUser, showOnboarding, toast, userDetails]);
 
 
   const handleOnboardingComplete = () => {
     if (authUser) {
       localStorage.setItem(`onboardingComplete_${authUser.id}`, 'true');
+      loadGamificationData(authUser.id); // Refresh gamification data
+      checkWeeklySummary(authUser.id); // Check summary after onboarding
     }
     setShowOnboarding(false);
     setShowWelcomeTourMessage(true); 
@@ -266,6 +327,16 @@ export default function HomePage() {
     },
   ];
 
+  const handleShareAchievement = (achievementText: string) => {
+    // Basic simulation - in a real app, this would use navigator.share or open social media intent
+    console.log(`Sharing: ${achievementText}`);
+    toast({
+      title: "Shared!",
+      description: `${achievementText} (Simulated share to social media)`,
+    });
+  };
+
+
   return (
     <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full animate-in fade-in duration-500">
       {showOnboarding && authUser && <OnboardingDialog user={authUser} onComplete={handleOnboardingComplete} />}
@@ -307,14 +378,22 @@ export default function HomePage() {
 
       {!showOnboarding && (
         <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0 animate-in fade-in-50 duration-700">
-          <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
-          {isLoadingDashboard && !dashboardData ? ( // Show this only if loading and no data (cached or fresh)
+          <div className="flex justify-between items-center mb-6">
+            <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold text-foreground">Your At-a-Glance Dashboard</h2>
+            {dailyStreak && dailyStreak.currentStreak > 0 && (
+                 <div className="flex items-center gap-2 p-2 rounded-md bg-accent/10 border border-accent/30 text-accent">
+                    <Flame className="h-6 w-6"/>
+                    <span className="font-semibold text-lg">{dailyStreak.currentStreak}-Day Streak!</span>
+                 </div>
+            )}
+          </div>
+          {isLoadingDashboard && !dashboardData ? ( 
             <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[200px]">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
                 <p className="text-lg font-medium text-foreground">Fetching your dashboard insights...</p>
                 <p className="text-sm text-muted-foreground">Just a moment while we prepare your personalized view.</p>
             </div>
-          ) : isLoadingDashboard && dashboardData ? ( // Skeletons if loading new data but showing cached data
+          ) : isLoadingDashboard && dashboardData ? ( 
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard loading state">
               {dashboardSnippets.map((snippet, i) => (
                 <Card key={snippet.title + i} className="flex flex-col overflow-hidden shadow-md bg-card">
@@ -367,6 +446,24 @@ export default function HomePage() {
                   Login to view your personalized dashboard.
               </p>
           )}
+           {unlockedBadges.length > 0 && (
+            <Card className="mt-6 shadow-md">
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center"><Award className="mr-2 h-5 w-5 text-accent" />Your Achievements</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                    {unlockedBadges.map(badgeName => {
+                       const IconComponent = BADGE_ICONS[badgeName] || Award; // Default icon
+                       return (
+                        <Badge key={badgeName} variant="secondary" className="py-1 px-3 text-sm bg-primary/10 text-primary border-primary/30">
+                            <IconComponent className="h-4 w-4 mr-1.5" />
+                            {badgeName}
+                        </Badge>
+                       );
+                    })}
+                </CardContent>
+            </Card>
+          )}
         </section>
       )}
 
@@ -386,6 +483,17 @@ export default function HomePage() {
                   priority={index < 3} 
                   loading={index < 3 ? "eager" : "lazy"}
                 />
+                {feature.title === "Custom Meal Plan Generation" && ( // Example share button
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-2 right-2 bg-background/70 hover:bg-background/90 text-foreground"
+                        onClick={() => handleShareAchievement(`Just created a new meal plan with NutriAI!`)}
+                        aria-label="Share meal plan achievement"
+                    >
+                        <Share2 className="h-5 w-5"/>
+                    </Button>
+                )}
               </div>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-2">

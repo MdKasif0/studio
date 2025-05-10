@@ -1,9 +1,11 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Award, Flame, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { ChallengeCard } from "@/components/challenges/ChallengeCard"; // Import the new component
 
 export const metadata: Metadata = {
   title: "Nutrition Challenges & Achievements | Nutri AI",
@@ -27,7 +29,7 @@ export default function ChallengesPage() {
       description: "Log a healthy meal every day for 7 days straight.",
       points: 100,
       badgeIcon: Flame,
-      status: "active",
+      status: "active" as "active" | "locked" | "completed",
       image: "https://picsum.photos/seed/challenge1/400/200",
       aiHint: "healthy breakfast",
     },
@@ -36,7 +38,7 @@ export default function ChallengesPage() {
       description: "Try and rate 5 new recipes from NutriCoach AI.",
       points: 150,
       badgeIcon: Star,
-      status: "locked",
+      status: "completed" as "active" | "locked" | "completed",
       image: "https://picsum.photos/seed/challenge2/400/200",
       aiHint: "cooking ingredients",
     },
@@ -45,7 +47,7 @@ export default function ChallengesPage() {
       description: "Complete 3 mindful eating exercises this week.",
       points: 75,
       badgeIcon: ShieldCheck,
-      status: "locked",
+      status: "locked" as "active" | "locked" | "completed",
       image: "https://picsum.photos/seed/challenge3/400/200",
       aiHint: "meditation food",
     },
@@ -85,49 +87,7 @@ export default function ChallengesPage() {
         <h2 id="available-challenges-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Available Challenges</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {challenges.map((challenge, index) => (
-            <Card key={index} className="shadow-xl overflow-hidden flex flex-col">
-              <div className="relative h-32 md:h-40 w-full">
-                <Image
-                  src={challenge.image}
-                  alt={`Image for ${challenge.title} challenge`}
-                  fill 
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover" 
-                  data-ai-hint={challenge.aiHint}
-                  priority={index < 2}
-                  loading={index < 2 ? "eager" : "lazy"}
-                />
-                {challenge.status === "locked" && (
-                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                     <p className="text-white text-md md:text-lg font-semibold">Locked</p>
-                   </div>
-                )}
-              </div>
-              <CardHeader className="pb-2 pt-3 px-4">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg md:text-xl">{challenge.title}</CardTitle>
-                  <challenge.badgeIcon aria-hidden="true" className={`h-6 w-6 md:h-7 md:w-7 ${challenge.status === "active" ? "text-accent" : "text-muted"}`} />
-                </div>
-                <CardDescription className="h-12 md:h-16 text-xs md:text-sm">{challenge.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="px-4 pt-2 pb-3">
-                <div className="flex justify-between items-center mb-2 md:mb-3">
-                  <Badge variant={challenge.status === "active" ? "default" : "secondary"} className="bg-primary/20 text-primary text-xs">
-                    {challenge.points} Points
-                  </Badge>
-                  {challenge.status === "active" ? (
-                     <Badge variant="default" className="bg-green-500 text-white text-xs">Active</Badge>
-                  ) : (
-                     <Badge variant="outline" className="text-xs">Locked</Badge>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="px-4 pb-4 pt-0 mt-auto">
-                 <Button className="w-full bg-accent hover:bg-accent/80 text-accent-foreground text-sm" disabled={challenge.status === "locked"}>
-                  {challenge.status === "active" ? "View Progress" : "Unlock Challenge"}
-                </Button>
-              </CardFooter>
-            </Card>
+            <ChallengeCard key={index} challenge={challenge} index={index} />
           ))}
         </div>
         <p className="text-center mt-6 md:mt-8 text-xs md:text-sm text-muted-foreground">
