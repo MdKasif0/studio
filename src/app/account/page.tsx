@@ -21,11 +21,12 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as RadixAlertDialogTitle, 
+  AlertDialogTitle as RadixAlertDialogTitle,
+  AlertDialogTrigger, // Added AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription as UiAlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; 
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger as ShadDialogTrigger } from '@/components/ui/dialog'; // Renamed DialogTrigger to avoid conflict
 import { 
   getAuthUser, 
   saveUserDetails, 
@@ -413,11 +414,11 @@ export default function AccountPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-              <DialogTrigger asChild>
+              <ShadDialogTrigger asChild>
                 <Button variant="outline" className="w-full">
                   <KeyRound className="mr-2 h-4 w-4" /> Change Password
                 </Button>
-              </DialogTrigger>
+              </ShadDialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Change Password</DialogTitle>
