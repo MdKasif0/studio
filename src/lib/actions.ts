@@ -1,4 +1,3 @@
-
 "use server";
 
 import {
@@ -31,7 +30,8 @@ export async function handleDietaryAnalysis(
 ): Promise<AnalyzeDietaryHabitsOutput> {
   console.log("Server Action: handleDietaryAnalysis called with habits:", data.dietaryHabits, "API Key provided:", !!data.apiKey);
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate network delay if needed for testing loaders
+    // await new Promise(resolve => setTimeout(resolve, 1500));
     if (data.dietaryHabits.toLowerCase().includes("trigger error")) {
       throw new Error("Simulated AI error during dietary analysis.");
     }
@@ -40,6 +40,9 @@ export async function handleDietaryAnalysis(
   } catch (error) {
     console.error("Error in handleDietaryAnalysis:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key"))) {
+      throw new Error("Dietary analysis failed due to an API Key issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
+    }
     throw new Error(`Failed to analyze dietary habits: ${errorMessage}. Please try again.`);
   }
 }
@@ -49,7 +52,7 @@ export async function handleMealPlanGeneration(
 ): Promise<GenerateCustomMealPlanOutput> {
   console.log("Server Action: handleMealPlanGeneration called with calorie intake:", data.calorieIntake, "API Key provided:", !!data.apiKey);
   try {
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
+    // await new Promise(resolve => setTimeout(resolve, 2000)); 
      if (data.calorieIntake === 0) {
       throw new Error("Simulated AI error: Calorie intake cannot be zero.");
     }
@@ -58,6 +61,9 @@ export async function handleMealPlanGeneration(
   } catch (error) {
     console.error("Error in handleMealPlanGeneration:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key"))) {
+      throw new Error("Meal plan generation failed due to an API Key issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
+    }
     throw new Error(`Failed to generate meal plan: ${errorMessage}. Please try again.`);
   }
 }
@@ -67,7 +73,7 @@ export async function handleRecipeSuggestion(
 ): Promise<SuggestRecipeAlternativesOutput> {
   console.log("Server Action: handleRecipeSuggestion called with recipe:", data.recipeName, "API Key provided:", !!data.apiKey);
   try {
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    // await new Promise(resolve => setTimeout(resolve, 1200));
     if (data.recipeName.toLowerCase().includes("trigger error")) {
         throw new Error("Simulated AI error during recipe suggestion.");
     }
@@ -76,6 +82,9 @@ export async function handleRecipeSuggestion(
   } catch (error) {
     console.error("Error in handleRecipeSuggestion:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key"))) {
+      throw new Error("Recipe suggestion failed due to an API Key issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
+    }
     throw new Error(`Failed to suggest recipe alternatives: ${errorMessage}. Please try again.`);
   }
 }
@@ -93,6 +102,9 @@ export async function handleChatbotInteraction(
   } catch (error) {
     console.error("Error in handleChatbotInteraction:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+     if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key") || error.message.toLowerCase().includes("permission denied"))) {
+      throw new Error("Chatbot interaction failed due to an API Key or permission issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
+    }
     throw new Error(`Chatbot interaction failed: ${errorMessage}. Please try again.`);
   }
 }
@@ -107,6 +119,9 @@ export async function handleHomeDashboardUpdate(
   } catch (error) {
     console.error("Error in handleHomeDashboardUpdate:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    if (error instanceof Error && (error.message.includes("API key") || error.message.toLowerCase().includes("invalid api key") || error.message.toLowerCase().includes("permission denied"))) {
+         throw new Error("Dashboard update failed due to an API Key or permission issue. Please check your API key in Account Settings or ensure the server is configured correctly.");
+    }
     throw new Error(`Failed to update dashboard: ${errorMessage}. Please try again.`);
   }
 }
