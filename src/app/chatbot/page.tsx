@@ -2,40 +2,17 @@
 import { ChatbotInterface } from "@/components/chatbot/ChatbotInterface";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquareHeart } from "lucide-react";
-// import type { Metadata } from "next"; // Not used directly in client component (page is client)
-
-// export const metadata: Metadata = { // This won't work directly in a "use client" component.
-//   title: "Nutri AI Assistant - Your Nutrition Chatbot | Nutri AI",
-//   description: "Chat with Nutri AI's intelligent assistant for nutrition questions, app guidance, and daily motivation on your health journey.",
-// };
-
 
 export default function ChatbotPage() {
   return (
-    <div className="container mx-auto flex flex-col h-full max-h-[calc(100vh-var(--mobile-header-h,56px)-var(--mobile-footer-h,64px)-2rem)] md:max-h-full py-0 md:py-8">
-      {/*
-        Mobile height calculation:
-        100vh (full viewport height)
-        - 56px (TopAppBar height, assuming h-14)
-        - 64px (BottomNavigationBar height, assuming h-16)
-        - 2rem (padding from main content area, 1rem top + 1rem bottom from p-4)
-        This ensures the card attempts to fill the available space on mobile.
-        On desktop, max-h-full allows it to take content height or be constrained by parent if fixed.
-      */}
-      <Card className="shadow-xl flex-grow flex flex-col overflow-hidden">
-        <CardHeader className="pb-4 px-4 md:px-6 pt-4 md:pt-6">
-          <div className="flex items-center gap-2 md:gap-3 mb-2">
-            <MessageSquareHeart className="h-7 w-7 md:h-8 md:w-8 text-accent" />
-            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Nutri AI Assistant</CardTitle>
-          </div>
-          <CardDescription className="text-muted-foreground text-sm md:text-base">
-            Your personal AI guide for nutrition questions, help with using the app, and daily motivation. Ask me anything!
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow flex flex-col overflow-hidden p-2 sm:p-4">
-          <ChatbotInterface />
-        </CardContent>
-      </Card>
+    // Ensure the container takes full height and allows ChatbotInterface to manage its layout
+    <div className="container mx-auto flex flex-col h-full max-h-[calc(100vh-var(--mobile-header-h,56px)-var(--mobile-footer-h,0px)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] md:max-h-[calc(100vh-var(--desktop-header-h,56px)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] md:py-0 p-0">
+        {/* 
+          No outer Card needed here if ChatbotInterface handles its own bordering and background.
+          ChatbotInterface will be designed to be a self-contained unit with history panel and chat area.
+          The main objective is to give ChatbotInterface as much vertical space as possible.
+        */}
+        <ChatbotInterface />
     </div>
   );
 }

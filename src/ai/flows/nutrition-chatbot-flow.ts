@@ -10,10 +10,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { AIPersona } from '@/lib/authLocalStorage'; // Import AIPersona type
 
 // Define a schema for chat history messages
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model']), // 'user' for user messages, 'model' for AI responses
+  role: z.enum(['user', 'model', 'system']), 
   content: z.string(),
 });
 
@@ -27,6 +28,7 @@ const NutritionChatbotInputSchema = z.object({
       preferences: z.string().optional(),
       healthGoals: z.string().optional(),
   }).optional().describe('Basic user profile information to personalize responses.'),
+  persona: z.enum(["Friendly Coach", "Professional Nutritionist", "Playful Chef"]).optional().describe("The selected AI persona for the chat."),
   apiKey: z.string().optional().describe('Optional user-provided Google AI API key.'),
 });
 export type NutritionChatbotInput = z.infer<typeof NutritionChatbotInputSchema>;
@@ -42,10 +44,17 @@ export async function nutritionChatbot(input: NutritionChatbotInput): Promise<Nu
 }
 
 // Construct the prompt string with history
-function buildChatPrompt(input: Omit<NutritionChatbotInput, 'apiKey'>): string { // apiKey is not used in prompt string directly
-  let fullPrompt = `You are Nutri AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant. Your primary goal is to provide comprehensive support to users of the Nutri AI app. This includes:
+function buildChatPrompt(input: Omit<NutritionChatbotInput, 'apiKey'>): string {
+  let personaDescription = "You are Nutri AI, a friendly, empathetic, and knowledgeable virtual nutrition assistant.";
+  if (input.persona === "Professional Nutritionist") {
+    personaDescription = "You are Nutri AI, a highly professional and evidence-based virtual nutritionist. Provide detailed, scientific, and precise information.";
+  } else if (input.persona === "Playful Chef") {
+    personaDescription = "You are Nutri AI, a fun, creative, and playful virtual chef! Make nutrition exciting with engaging language, food puns, and enthusiastic recipe ideas.";
+  }
+  
+  let fullPrompt = `${personaDescription} Your primary goal is to provide comprehensive support to users of the Nutri AI app. This includes:
 
-- Answering nutrition-related questions with evidence-based information.
+- Answering nutrition-related questions with evidence-based information (adjusting depth based on persona).
 - Guiding users on how to effectively use all features of the Nutri AI app (e.g., Dietary Analysis, Meal Plan Generator, Recipe Alternatives, Challenges, Community Hub, Progress Tracking, Educational Resources).
 - Assisting with common app usage queries or clarifying feature functionalities. If a query is too technical or requires administrative access, politely state your limitations and suggest checking a FAQ if available or contacting support (if such a channel exists).
 - Providing daily encouragement, motivation, and actionable tips to help them achieve their health goals.
@@ -61,7 +70,9 @@ Conversation History:
 
   if (input.history) {
     input.history.forEach(msg => {
-      fullPrompt += `${msg.role === 'user' ? 'User' : 'Nutri AI'}: ${msg.content}\n`;
+      if (msg.role !== 'system') { // Exclude system messages from history shown to AI
+        fullPrompt += `${msg.role === 'user' ? 'User' : 'Nutri AI'}: ${msg.content}\n`;
+      }
     });
   }
   fullPrompt += `User: ${input.message}\nNutri AI:`;
@@ -71,11 +82,11 @@ Conversation History:
 
 const prompt = ai.definePrompt({
   name: 'nutritionChatbotPrompt',
-  input: {schema: NutritionChatbotInputSchema.omit({ apiKey: true }) }, // apiKey is handled by the flow
+  input: {schema: NutritionChatbotInputSchema.omit({ apiKey: true }) }, 
   output: {schema: NutritionChatbotOutputSchema},
   prompt: buildChatPrompt, 
-  config: { // Default config, can be overridden by flow
-    temperature: 0.7,
+  config: { 
+    temperature: 0.7, // Default, can be adjusted based on persona later if needed
     safetySettings: [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -94,7 +105,18 @@ const nutritionChatbotFlow = ai.defineFlow(
   },
   async (input) => {
     const { apiKey, ...promptInput } = input;
-    const options = apiKey ? { config: { apiKey } } : undefined;
+    
+    // Adjust temperature based on persona if desired
+    let temperature = 0.7;
+    if (input.persona === "Professional Nutritionist") temperature = 0.4;
+    if (input.persona === "Playful Chef") temperature = 0.8;
+
+    const options = { 
+      config: { 
+        ...(apiKey && { apiKey }),
+        temperature,
+      } 
+    };
     
     const llmResponse = await prompt(promptInput, options);
     const output = llmResponse.output;
@@ -104,19 +126,24 @@ const nutritionChatbotFlow = ai.defineFlow(
     }
     
     let generatedSuggestions: string[] = [];
-    if (output.reply.toLowerCase().includes("water") || output.reply.toLowerCase().includes("hydrate")) {
+    // Suggestion generation logic (can also be persona-dependent)
+    const lowerReply = output.reply.toLowerCase();
+    if (lowerReply.includes("water") || lowerReply.includes("hydrate")) {
         generatedSuggestions.push("Track my water intake today?");
     }
-    if (output.reply.toLowerCase().includes("meal plan") || output.reply.toLowerCase().includes("recipe")) {
+    if (lowerReply.includes("meal plan") || lowerReply.includes("recipe")) {
         generatedSuggestions.push("Generate a new meal idea?");
+        if (input.persona === "Playful Chef") generatedSuggestions.push("Whip up something adventurous!");
     }
-     if (output.reply.toLowerCase().includes("feature") || output.reply.toLowerCase().includes("how to")) {
+     if (lowerReply.includes("feature") || lowerReply.includes("how to")) {
         generatedSuggestions.push("Tell me more about Dietary Analysis.");
         generatedSuggestions.push("How do I create a family meal plan?");
     }
      if (generatedSuggestions.length === 0 && Math.random() > 0.5) { 
         generatedSuggestions.push("What are common protein sources?");
     }
+    if (generatedSuggestions.length > 3) generatedSuggestions = generatedSuggestions.slice(0,3); // Limit suggestions
+
 
     return {
       reply: output.reply,

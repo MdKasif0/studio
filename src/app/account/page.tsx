@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut, KeySquare, ShieldAlert } from "lucide-react";
+import { User, Edit3, Shield, Settings, Trash2, Camera, Terminal, KeyRound, Loader2, LogOut, KeySquare, ShieldAlert, MessageSquareX } from "lucide-react";
 import { AccountForm } from "@/components/account/AccountForm";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import type { AccountSettingsFormData, ChangePasswordFormData } from "@/lib/schemas/authSchemas";
@@ -21,9 +21,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as RadixAlertDialogTitle, // Renamed to avoid conflict
+  AlertDialogTitle as RadixAlertDialogTitle, 
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription as UiAlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; // Renamed AlertDescription
+import { Alert, AlertDescription as UiAlertDescription, AlertTitle as UiAlertTitle } from "@/components/ui/alert"; 
 import { handleAccountUpdate, handleChangePasswordAction, handleDeleteAccountAction } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
@@ -31,6 +31,7 @@ import {
   saveUserDetails, 
   getUserDetails, 
   clearUserSession, 
+  deleteAllChatSessions, // Added for clearing chat data
   type StoredUserDetails, 
   type AuthUser,
   saveApiKey,
@@ -72,7 +73,6 @@ export default function AccountPage() {
       const storedDetails = getUserDetails(currentAuthUser.id);
       if (storedDetails) {
         setUserDetails(storedDetails);
-        // Check for disclaimer after loading details
         const hasRestrictions = Object.values(storedDetails.dietaryRestrictions || {}).some(val => val === true || (typeof val === 'string' && val.length > 0));
         if (hasRestrictions && !hasAcknowledgedMedicalDisclaimer(currentAuthUser.id, 'restrictions')) {
           setShowAccountDisclaimer(true);
@@ -125,7 +125,7 @@ export default function AccountPage() {
           profilePictureDataUrl: userDetails?.profilePictureDataUrl, 
         };
         saveUserDetails(authUser.id, newDetails);
-        setUserDetails(newDetails); // This will trigger the useEffect for disclaimer check if restrictions changed
+        setUserDetails(newDetails);
         toast({ title: "Profile Updated", description: response.message });
 
         const restrictionsChanged = JSON.stringify(userDetails?.dietaryRestrictions) !== JSON.stringify(submittedData.dietaryRestrictions);
@@ -221,6 +221,13 @@ export default function AccountPage() {
       setUserApiKeyInput("");
       setCurrentApiKeyDisplay(null);
       toast({ title: "API Key Cleared", description: "Your Gemini API key has been removed from local storage." });
+    }
+  };
+
+  const handleClearChatData = () => {
+    if (authUser) {
+      deleteAllChatSessions(authUser.id);
+      toast({ title: "Chat Data Cleared", description: "Your AI Assistant chat history has been removed." });
     }
   };
 
@@ -370,6 +377,27 @@ export default function AccountPage() {
               <span className="text-foreground">Theme</span>
               <ThemeToggleButton />
             </div>
+             <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <MessageSquareX className="mr-2 h-4 w-4" /> Clear Chat Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <RadixAlertDialogTitle>Clear All Chat Data?</RadixAlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all your AI Assistant chat history from your local browser storage. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearChatData} className="bg-destructive hover:bg-destructive/90">
+                    Yes, clear chat data
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <p className="text-sm text-muted-foreground">
               Notification settings and other app preferences will be available here soon.
             </p>

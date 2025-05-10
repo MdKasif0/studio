@@ -3,12 +3,11 @@
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
 import type { HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
-import type { GenerateCustomMealPlanOutput, GenerateCustomMealPlanInput } from "@/ai/flows/generate-custom-meal-plan"; // Assuming Meal is part of GenerateCustomMealPlanOutput or a sub-type
+import type { GenerateCustomMealPlanOutput } from "@/ai/flows/generate-custom-meal-plan";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
 const USER_DETAILS_PREFIX = "nutriAIUserDetails_";
-const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
 const API_KEY_PREFIX = "nutriAIUserApiKey_";
 const HOME_DASHBOARD_CACHE_PREFIX = "nutriAIHomeDashboard_";
 const SYMPTOM_LOG_PREFIX = "nutriAISymptomLog_";
@@ -19,6 +18,15 @@ const LAST_WEEKLY_SUMMARY_PREFIX = "nutriAILastWeeklySummary_";
 const FAVORITE_RECIPES_PREFIX = "nutriAIFavoriteRecipes_";
 const MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX = "nutriAIMedicalDisclaimerAcknowledged_";
 
+// Chat specific keys
+const CHAT_SESSIONS_PREFIX = "nutriAIChatSessions_";
+const ACTIVE_CHAT_ID_PREFIX = "nutriAIActiveChatId_";
+const CHAT_DRAFT_PREFIX = "nutriAIChatDraft_";
+const PINNED_CHATS_PREFIX = "nutriAIPinnedChats_";
+const AI_PERSONA_PREFIX = "nutriAIAiPersona_";
+const CHAT_FEEDBACK_PREFIX = "nutriAIChatFeedback_";
+
+const MAX_CHAT_SESSIONS = 50;
 
 export interface AuthUser {
   id: string;
@@ -26,16 +34,26 @@ export interface AuthUser {
   email: string;
 }
 
-// StoredUserDetails will store parts of AccountSettingsFormData not in AuthUser, plus profile pic
 export interface StoredUserDetails extends Omit<AccountSettingsFormData, 'username' | 'email'> {
   profilePictureDataUrl?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "model";
+  role: "user" | "model" | "system"; // Added system role for initial/error messages
   content: string;
+  timestamp: string; // ISO string
   suggestions?: string[];
+  reaction?: string; // For emoji reactions
+}
+
+export interface ChatSession {
+  id: string; // Unique ID for the chat session (e.g., timestamp-based)
+  title: string; // e.g., "Chat from YYYY-MM-DD HH:mm" or first user message
+  messages: ChatMessage[];
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+  persona?: AIPersona; // Persona used for this chat
 }
 
 export interface HomeDashboardCache {
@@ -44,28 +62,35 @@ export interface HomeDashboardCache {
 }
 
 export interface SymptomLogEntry extends SymptomLogFormValues {
-  id: string; // Unique ID for the log entry
-  loggedAt: string; // ISO string timestamp when the log was created by the user action
-  isQuickLog?: boolean; // Flag for quick logs
+  id: string;
+  loggedAt: string;
+  isQuickLog?: boolean;
 }
 
 export interface DailyStreakData {
-  lastLogDate: string; // YYYY-MM-DD
+  lastLogDate: string;
   currentStreak: number;
 }
 
-// Define a type for a Meal based on what's in GenerateCustomMealPlanOutput's dailyPlans.meals
-// This might need to be adjusted based on the exact structure of MealSchema in generate-custom-meal-plan.ts
 export interface FavoriteRecipe {
-  id: string; // Could be dayIndex-mealIndex or a hash of the recipe content
-  day?: string; // Optional: day of the plan it came from
+  id: string;
+  day?: string;
   mealName: string;
   dishName: string;
   recipeContent: string;
   servings?: number;
   notes?: string;
   substitutions?: string[];
-  addedAt: string; // ISO string timestamp
+  addedAt: string;
+}
+
+export type AIPersona = "Friendly Coach" | "Professional Nutritionist" | "Playful Chef";
+
+export interface ChatFeedback {
+  chatSessionId: string;
+  type: 'suggestion' | 'misunderstanding';
+  text: string;
+  timestamp: string;
 }
 
 
@@ -90,7 +115,7 @@ export function removeAuthUser(): void {
   }
 }
 
-// --- User Details (Profile, Settings) ---
+// --- User Details ---
 export function saveUserDetails(userId: string, details: StoredUserDetails): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(`${USER_DETAILS_PREFIX}${userId}`, JSON.stringify(details));
@@ -108,28 +133,6 @@ export function getUserDetails(userId: string): StoredUserDetails | null {
 export function removeUserDetails(userId: string): void {
     if (typeof window !== 'undefined') {
         localStorage.removeItem(`${USER_DETAILS_PREFIX}${userId}`);
-    }
-}
-
-
-// --- Chat History ---
-export function saveChatHistory(userId: string, history: ChatMessage[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(`${CHAT_HISTORY_PREFIX}${userId}`, JSON.stringify(history));
-  }
-}
-
-export function getChatHistory(userId: string): ChatMessage[] | null {
-  if (typeof window !== 'undefined') {
-    const historyStr = localStorage.getItem(`${CHAT_HISTORY_PREFIX}${userId}`);
-    return historyStr ? JSON.parse(historyStr) : []; // Return empty array if not found for easier handling
-  }
-  return [];
-}
-
-export function removeChatHistory(userId: string): void {
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem(`${CHAT_HISTORY_PREFIX}${userId}`);
     }
 }
 
@@ -152,6 +155,169 @@ export function removeApiKey(userId: string): void {
     localStorage.removeItem(`${API_KEY_PREFIX}${userId}`);
   }
 }
+
+// --- Chat Sessions ---
+export function getAllChatSessions(userId: string): ChatSession[] {
+  if (typeof window !== 'undefined') {
+    const sessionsStr = localStorage.getItem(`${CHAT_SESSIONS_PREFIX}${userId}`);
+    const sessions = sessionsStr ? JSON.parse(sessionsStr) : [];
+    // Ensure sessions are sorted by updatedAt descending (most recent first)
+    return sessions.sort((a: ChatSession, b: ChatSession) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+  return [];
+}
+
+export function saveChatSession(userId: string, session: ChatSession): void {
+  if (typeof window !== 'undefined') {
+    let sessions = getAllChatSessions(userId);
+    const existingIndex = sessions.findIndex(s => s.id === session.id);
+    if (existingIndex > -1) {
+      sessions[existingIndex] = session;
+    } else {
+      sessions.unshift(session); // Add new session to the beginning
+    }
+    // Limit to MAX_CHAT_SESSIONS
+    sessions = sessions.slice(0, MAX_CHAT_SESSIONS);
+    localStorage.setItem(`${CHAT_SESSIONS_PREFIX}${userId}`, JSON.stringify(sessions));
+  }
+}
+
+export function getChatSession(userId: string, sessionId: string): ChatSession | null {
+  if (typeof window !== 'undefined') {
+    const sessions = getAllChatSessions(userId);
+    return sessions.find(s => s.id === sessionId) || null;
+  }
+  return null;
+}
+
+export function deleteChatSession(userId: string, sessionId: string): void {
+  if (typeof window !== 'undefined') {
+    let sessions = getAllChatSessions(userId);
+    sessions = sessions.filter(s => s.id !== sessionId);
+    localStorage.setItem(`${CHAT_SESSIONS_PREFIX}${userId}`, JSON.stringify(sessions));
+    // If the deleted session was active, clear active chat ID
+    const activeId = getActiveChatId(userId);
+    if (activeId === sessionId) {
+      removeActiveChatId(userId);
+    }
+  }
+}
+
+export function deleteAllChatSessions(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${CHAT_SESSIONS_PREFIX}${userId}`);
+    removeActiveChatId(userId);
+    // Also clear pinned chats if all are deleted
+    savePinnedChatIds(userId, []);
+  }
+}
+
+export function setActiveChatId(userId: string, sessionId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${ACTIVE_CHAT_ID_PREFIX}${userId}`, sessionId);
+  }
+}
+
+export function getActiveChatId(userId: string): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(`${ACTIVE_CHAT_ID_PREFIX}${userId}`);
+  }
+  return null;
+}
+
+export function removeActiveChatId(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${ACTIVE_CHAT_ID_PREFIX}${userId}`);
+  }
+}
+
+// --- Chat Drafts ---
+export function saveChatDraft(userId: string, sessionId: string, draft: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${CHAT_DRAFT_PREFIX}${userId}_${sessionId}`, draft);
+  }
+}
+
+export function getChatDraft(userId: string, sessionId: string): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(`${CHAT_DRAFT_PREFIX}${userId}_${sessionId}`);
+  }
+  return null;
+}
+
+export function removeChatDraft(userId: string, sessionId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${CHAT_DRAFT_PREFIX}${userId}_${sessionId}`);
+  }
+}
+
+// --- Pinned Chats ---
+export function getPinnedChatIds(userId: string): string[] {
+  if (typeof window !== 'undefined') {
+    const idsStr = localStorage.getItem(`${PINNED_CHATS_PREFIX}${userId}`);
+    return idsStr ? JSON.parse(idsStr) : [];
+  }
+  return [];
+}
+
+export function savePinnedChatIds(userId: string, ids: string[]): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${PINNED_CHATS_PREFIX}${userId}`, JSON.stringify(ids));
+  }
+}
+
+export function togglePinnedChat(userId: string, sessionId: string): void {
+  if (typeof window !== 'undefined') {
+    let pinnedIds = getPinnedChatIds(userId);
+    if (pinnedIds.includes(sessionId)) {
+      pinnedIds = pinnedIds.filter(id => id !== sessionId);
+    } else {
+      pinnedIds.unshift(sessionId); // Add to the beginning
+    }
+    savePinnedChatIds(userId, pinnedIds);
+  }
+}
+
+// --- AI Persona ---
+export function saveAIPersona(userId: string, persona: AIPersona): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`${AI_PERSONA_PREFIX}${userId}`, persona);
+  }
+}
+
+export function getAIPersona(userId: string): AIPersona | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(`${AI_PERSONA_PREFIX}${userId}`) as AIPersona | null;
+  }
+  return null;
+}
+
+// --- Chat Feedback ---
+export function saveChatFeedback(userId: string, feedback: ChatFeedback): void {
+  if (typeof window !== 'undefined') {
+    const feedbacks = getChatFeedbacks(userId);
+    feedbacks.push(feedback);
+    localStorage.setItem(`${CHAT_FEEDBACK_PREFIX}${userId}`, JSON.stringify(feedbacks));
+  }
+}
+
+export function getChatFeedbacks(userId: string): ChatFeedback[] {
+   if (typeof window !== 'undefined') {
+    const fbStr = localStorage.getItem(`${CHAT_FEEDBACK_PREFIX}${userId}`);
+    return fbStr ? JSON.parse(fbStr) : [];
+  }
+  return [];
+}
+
+// --- Export Chat History ---
+export function exportChatHistory(userId: string): string {
+  if (typeof window !== 'undefined') {
+    const sessions = getAllChatSessions(userId);
+    return JSON.stringify(sessions, null, 2);
+  }
+  return "[]";
+}
+
 
 // --- Home Dashboard Cache ---
 export function saveHomeDashboardData(userId: string, data: HomeDashboardOutput): void {
@@ -189,11 +355,10 @@ export function saveSymptomLog(userId: string, logEntry: SymptomLogFormValues, i
   if (typeof window !== 'undefined') {
     const logs = getSymptomLogs(userId);
     logs.push(newLog);
-    // Sort logs by logTime descending (most recent first) before saving
     logs.sort((a, b) => new Date(b.logTime).getTime() - new Date(a.logTime).getTime());
     localStorage.setItem(`${SYMPTOM_LOG_PREFIX}${userId}`, JSON.stringify(logs));
   }
-  return newLog; // Return the newly created log with ID and loggedAt
+  return newLog;
 }
 
 export function getSymptomLogs(userId: string): SymptomLogEntry[] {
@@ -291,7 +456,7 @@ export function getLastWeeklySummaryDate(userId: string): string | null {
   return null;
 }
 
-export function saveLastWeeklySummaryDate(userId: string, date: string): void { // date as YYYY-MM-DD
+export function saveLastWeeklySummaryDate(userId: string, date: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(`${LAST_WEEKLY_SUMMARY_PREFIX}${userId}`, date);
   }
@@ -323,15 +488,13 @@ export function saveFavoriteRecipe(userId: string, recipe: Omit<FavoriteRecipe, 
     };
     const existingIndex = favorites.findIndex(fav => fav.id === newFavorite.id);
     if (existingIndex > -1) {
-      favorites[existingIndex] = newFavorite; // Update if exists
+      favorites[existingIndex] = newFavorite;
     } else {
       favorites.push(newFavorite);
     }
     localStorage.setItem(`${FAVORITE_RECIPES_PREFIX}${userId}`, JSON.stringify(favorites));
     return newFavorite;
   }
-  // This case should ideally not be hit if window is checked, but need to satisfy return type.
-  // Consider throwing an error or handling it more gracefully if `window` is not available.
    return { ...recipe, id: recipe.id || 'error-id', addedAt: new Date().toISOString() } as FavoriteRecipe;
 }
 
@@ -362,7 +525,7 @@ export function hasAcknowledgedMedicalDisclaimer(userId: string, context: 'sympt
   if (typeof window !== 'undefined') {
     return localStorage.getItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}${context}_${userId}`) === 'true';
   }
-  return false; // Default to false if not client-side or not set
+  return false;
 }
 
 export function acknowledgeMedicalDisclaimer(userId: string, context: 'symptomLog' | 'restrictions'): void {
@@ -371,13 +534,13 @@ export function acknowledgeMedicalDisclaimer(userId: string, context: 'symptomLo
   }
 }
 
-
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
     removeAuthUser();
     if (userId) {
         removeUserDetails(userId);
-        removeChatHistory(userId);
+        // removeChatHistory(userId); // Old single chat history
+        deleteAllChatSessions(userId); // New: clears all sessions and active ID
         removeApiKey(userId);
         removeHomeDashboardData(userId);
         removeSymptomLogs(userId);
@@ -385,10 +548,13 @@ export function clearUserSession(userId?: string): void {
         removeDailyStreakData(userId);
         removeUnlockedBadges(userId);
         removeLastWeeklySummaryDate(userId);
-        removeAllFavoriteRecipes(userId); // Clear favorites on logout
+        removeAllFavoriteRecipes(userId);
         localStorage.removeItem(`onboardingComplete_${userId}`);
-        // Clear disclaimer acknowledgements on logout
         localStorage.removeItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}symptomLog_${userId}`);
         localStorage.removeItem(`${MEDICAL_DISCLAIMER_ACKNOWLEDGED_KEY_PREFIX}restrictions_${userId}`);
+        localStorage.removeItem(`${AI_PERSONA_PREFIX}${userId}`);
+        localStorage.removeItem(`${CHAT_FEEDBACK_PREFIX}${userId}`);
+        // Remove drafts for all sessions (though typically sessions are cleared anyway)
+        // This part might be complex if many drafts exist; usually, deleting sessions handles it.
     }
 }
