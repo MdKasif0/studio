@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -125,6 +124,7 @@ export default function HomePage() {
               description: errorMessage,
           });
         }
+        // If there's an error, prefer showing cached data if available, otherwise null
         setDashboardData(cachedData ? cachedData.data : null);
       } finally {
         setIsLoadingDashboard(false);
@@ -132,7 +132,7 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [authUser, showOnboarding, toast, userDetails]); 
+  }, [authUser, showOnboarding, toast, userDetails]); // Added userDetails to dependencies
 
 
   const handleOnboardingComplete = () => {
@@ -267,7 +267,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full">
+    <div className="flex flex-col items-center space-y-8 md:space-y-12 w-full animate-in fade-in duration-500">
       {showOnboarding && authUser && <OnboardingDialog user={authUser} onComplete={handleOnboardingComplete} />}
       
       {showWelcomeTourMessage && (
@@ -306,7 +306,7 @@ export default function HomePage() {
       </header>
 
       {!showOnboarding && (
-        <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0">
+        <section aria-labelledby="dashboard-heading" className="w-full max-w-7xl px-2 sm:px-0 animate-in fade-in-50 duration-700">
           <h2 id="dashboard-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-center text-foreground">Your At-a-Glance Dashboard</h2>
           {isLoadingDashboard && !dashboardData ? ( // Show this only if loading and no data (cached or fresh)
             <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[200px]">
@@ -334,7 +334,7 @@ export default function HomePage() {
           ) : authUser && dashboardData ? ( 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-ai-hint="dashboard content">
               {dashboardSnippets.map((snippet) => (
-                <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card">
+                <Card key={snippet.title} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-card animate-in fade-in-25 duration-500 ease-out">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-1">
                       <snippet.icon aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7 text-accent" />
@@ -370,10 +370,10 @@ export default function HomePage() {
         </section>
       )}
 
-      <section aria-labelledby="features-heading" className="w-full max-w-7xl px-2 sm:px-0">
+      <section aria-labelledby="features-heading" className="w-full max-w-7xl px-2 sm:px-0 animate-in fade-in-75 duration-1000">
         <h2 id="features-heading" className="text-2xl md:text-3xl font-semibold mb-8 text-center text-foreground pt-8">Explore Nutri AI Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {features.map((feature) => (
+          {features.map((feature, index) => (
             <Card key={feature.title} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card" data-ai-hint={feature.dataAiHint}>
               <div className="relative h-40 md:h-48 w-full">
                 <Image
@@ -383,7 +383,8 @@ export default function HomePage() {
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   data-ai-hint={feature.aiHint}
-                  priority={features.indexOf(feature) < 3}
+                  priority={index < 3} 
+                  loading={index < 3 ? "eager" : "lazy"}
                 />
               </div>
               <CardHeader className="pb-3">
@@ -408,7 +409,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section aria-labelledby="how-it-works-heading" className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0">
+      <section aria-labelledby="how-it-works-heading" className="w-full max-w-4xl text-center py-8 md:py-12 px-2 sm:px-0 animate-in fade-in-100 duration-1200">
         <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-semibold mb-6 text-foreground">How Nutri AI Elevates Your Journey</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-left">
           <div className="p-4 md:p-6 bg-card rounded-lg shadow-md">
@@ -439,4 +440,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,7 +56,7 @@ export default function CommunityPage() {
   ];
 
   return (
-    <div className="container mx-auto py-4 md:py-8">
+    <div className="container mx-auto py-4 md:py-8 animate-in fade-in duration-500">
       <header className="mb-8 md:mb-12 text-center">
         <Users className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Nutri AI Community Hub</h1>
@@ -69,12 +68,12 @@ export default function CommunityPage() {
         </Button>
       </header>
 
-      <section aria-labelledby="trending-discussions-heading" className="mb-8 md:mb-12">
+      <section aria-labelledby="trending-discussions-heading" className="mb-8 md:mb-12 animate-in fade-in-25 duration-700">
         <h2 id="trending-discussions-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary flex items-center">
           <TrendingUp className="mr-2 h-5 w-5 md:h-6 md:w-6" /> Trending Discussions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {trendingPosts.map((post) => (
+          {trendingPosts.map((post, index) => (
             <Card key={post.id} className="shadow-xl overflow-hidden">
               {post.image && (
                 <div className="relative h-40 md:h-48 w-full">
@@ -85,7 +84,8 @@ export default function CommunityPage() {
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
                     data-ai-hint={post.imageAiHint}
-                    priority={post.id <= 2} // Prioritize first few post images
+                    priority={index < 2}
+                    loading={index < 2 ? "eager" : "lazy"}
                   />
                 </div>
               )}
@@ -116,7 +116,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section aria-labelledby="active-groups-heading">
+      <section aria-labelledby="active-groups-heading" className="animate-in fade-in-50 duration-900">
         <h2 id="active-groups-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Active Groups</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {activeGroups.map((group) => (

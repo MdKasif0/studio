@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { BookOpen, Youtube, Lightbulb, CookingPot, HelpingHand } from "lucide-react";
 import Image from "next/image";
@@ -72,7 +71,7 @@ export default function LearnPage() {
   ];
 
   return (
-    <div className="container mx-auto py-4 md:py-8">
+    <div className="container mx-auto py-4 md:py-8 animate-in fade-in duration-500">
       <header className="mb-8 md:mb-12 text-center">
         <BookOpen className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Knowledge & Support Hub</h1>
@@ -81,7 +80,7 @@ export default function LearnPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 animate-in fade-in-25 duration-700">
         {resources.map((resource, index) => (
           <Card key={index} className="shadow-xl overflow-hidden flex flex-col">
             <div className="relative h-40 md:h-48 w-full">
@@ -92,7 +91,8 @@ export default function LearnPage() {
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover"
                 data-ai-hint={resource.aiHint}
-                priority={index < 3} // Prioritize first few resource images
+                priority={index < 3}
+                loading={index < 3 ? "eager" : "lazy"}
               />
             </div>
             <CardHeader className="p-4">

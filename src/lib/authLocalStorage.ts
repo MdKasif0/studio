@@ -3,6 +3,7 @@
 
 import type { AccountSettingsFormData } from "@/lib/schemas/authSchemas";
 import type { HomeDashboardOutput } from "@/ai/flows/home-dashboard-flow";
+import type { GenerateCustomMealPlanOutput } from "@/ai/flows/generate-custom-meal-plan";
 import type { SymptomLogFormValues } from "@/lib/schemas/appSchemas";
 
 const AUTH_USER_KEY = "nutriAIAuthUser";
@@ -11,6 +12,7 @@ const CHAT_HISTORY_PREFIX = "nutriAIChatHistory_";
 const API_KEY_PREFIX = "nutriAIUserApiKey_";
 const HOME_DASHBOARD_CACHE_PREFIX = "nutriAIHomeDashboard_";
 const SYMPTOM_LOG_PREFIX = "nutriAISymptomLog_";
+const CACHED_MEAL_PLAN_PREFIX = "nutriAICachedMealPlan_";
 
 
 export interface AuthUser {
@@ -180,6 +182,28 @@ export function removeSymptomLogs(userId: string): void {
   }
 }
 
+// --- Cached Meal Plan ---
+export function saveCachedMealPlan(userId: string, plan: GenerateCustomMealPlanOutput): void {
+  if (typeof window !== 'undefined') {
+    // Could add a timestamp here if we want to expire old cached plans automatically
+    localStorage.setItem(`${CACHED_MEAL_PLAN_PREFIX}${userId}`, JSON.stringify(plan));
+  }
+}
+
+export function getCachedMealPlan(userId: string): GenerateCustomMealPlanOutput | null {
+  if (typeof window !== 'undefined') {
+    const planStr = localStorage.getItem(`${CACHED_MEAL_PLAN_PREFIX}${userId}`);
+    return planStr ? JSON.parse(planStr) : null;
+  }
+  return null;
+}
+
+export function removeCachedMealPlan(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(`${CACHED_MEAL_PLAN_PREFIX}${userId}`);
+  }
+}
+
 
 // --- Combined Logout ---
 export function clearUserSession(userId?: string): void {
@@ -189,8 +213,8 @@ export function clearUserSession(userId?: string): void {
         removeChatHistory(userId);
         removeApiKey(userId);
         removeHomeDashboardData(userId);
-        removeSymptomLogs(userId); // Added symptom logs removal
+        removeSymptomLogs(userId);
+        removeCachedMealPlan(userId); // Added cached meal plan removal
         localStorage.removeItem(`onboardingComplete_${userId}`); // Remove onboarding flag
     }
 }
-

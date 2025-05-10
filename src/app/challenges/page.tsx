@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -53,7 +52,7 @@ export default function ChallengesPage() {
   ];
 
   return (
-    <div className="container mx-auto py-4 md:py-8">
+    <div className="container mx-auto py-4 md:py-8 animate-in fade-in duration-500">
       <header className="mb-8 md:mb-12 text-center">
         <Award className="mx-auto h-12 w-12 md:h-16 md:w-16 text-accent mb-3 md:mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Challenges & Achievements</h1>
@@ -62,7 +61,7 @@ export default function ChallengesPage() {
         </p>
       </header>
 
-      <section aria-labelledby="progress-heading" className="mb-8 md:mb-12">
+      <section aria-labelledby="progress-heading" className="mb-8 md:mb-12 animate-in fade-in-25 duration-700">
         <h2 id="progress-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Your Progress</h2>
         <Card className="shadow-lg">
           <CardContent className="p-4 md:p-6 flex flex-col sm:flex-row justify-around items-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -82,7 +81,7 @@ export default function ChallengesPage() {
         </Card>
       </section>
 
-      <section aria-labelledby="available-challenges-heading">
+      <section aria-labelledby="available-challenges-heading" className="animate-in fade-in-50 duration-900">
         <h2 id="available-challenges-heading" className="text-xl md:text-2xl font-semibold mb-4 md:mb-6 text-primary">Available Challenges</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {challenges.map((challenge, index) => (
@@ -95,7 +94,8 @@ export default function ChallengesPage() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover" 
                   data-ai-hint={challenge.aiHint}
-                  priority={index < 2} // Prioritize first few challenge images
+                  priority={index < 2}
+                  loading={index < 2 ? "eager" : "lazy"}
                 />
                 {challenge.status === "locked" && (
                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
