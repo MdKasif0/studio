@@ -21,6 +21,7 @@ import {
   deleteAllChatSessions,
   setActiveChatId,
   getActiveChatId,
+  removeActiveChatId,
   saveChatDraft,
   getChatDraft,
   removeChatDraft,
@@ -43,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; // Removed DialogTrigger import from here
 import ReactMarkdown from 'react-markdown';
 import { Label } from "../ui/label";
 
@@ -73,40 +74,71 @@ export function ChatbotInterface() {
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
 
-  const loadInitialData = useCallback(() => {
-    const user = getAuthUser();
-    setAuthUser(user);
-    if (user) {
-      setUserDetails(getUserDetails(user.id));
-      setChatSessions(getAllChatSessions(user.id));
-      setPinnedChatIds(getPinnedChatIds(user.id));
-      setCurrentPersona(getAIPersona(user.id) || "Friendly Coach");
-      
-      let lastActiveId = getActiveChatId(user.id);
-      if (lastActiveId) {
-        const session = getChatSession(user.id, lastActiveId);
-        if (session) {
-          setActiveChatSessionId(lastActiveId);
-          setMessages(session.messages);
-          setInputValue(getChatDraft(user.id, lastActiveId) || "");
-        } else {
-          lastActiveId = null; // Session not found, treat as new
-        }
-      }
-      
-      if (!lastActiveId) {
-        startNewChat(false); // Start a new chat if no active one or previous active not found
-      }
+  const startNewChat = useCallback((userInitiated = true) => {
+    if (!authUser) {
+      if (userInitiated) toast({ variant: "destructive", title: "Not Logged In", description: "Please log in." });
+      return;
     }
+    const newChatId = `chat-${Date.now()}`;
+    const now = new Date().toISOString();
+    const newSession: ChatSession = {
+      id: newChatId,
+      title: `Chat from ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      messages: [{id: `${Date.now()}-init`, role: "system", content: INITIAL_AI_MESSAGE, timestamp: now }],
+      createdAt: now,
+      updatedAt: now,
+      persona: currentPersona
+    };
+    saveChatSession(authUser.id, newSession);
+    setActiveChatSessionId(newChatId);
+    setMessages(newSession.messages);
+    setInputValue("");
+    removeChatDraft(authUser.id, newChatId);
+    setChatSessions(getAllChatSessions(authUser.id));
+    setActiveChatId(authUser.id, newChatId);
+    if (userInitiated) toast({ title: "New Chat Started" });
+  }, [authUser, currentPersona, toast]);
+
+
+  useEffect(() => {
+    const localUser = getAuthUser();
+    setAuthUser(localUser);
   }, []);
 
   useEffect(() => {
-    loadInitialData();
+    if (authUser) {
+      setUserDetails(getUserDetails(authUser.id));
+      setChatSessions(getAllChatSessions(authUser.id));
+      setPinnedChatIds(getPinnedChatIds(authUser.id));
+      setCurrentPersona(getAIPersona(authUser.id) || "Friendly Coach");
+
+      let lastActiveId = getActiveChatId(authUser.id);
+      if (lastActiveId) {
+        const session = getChatSession(authUser.id, lastActiveId);
+        if (session) {
+          setActiveChatSessionId(lastActiveId);
+          setMessages(session.messages);
+          setInputValue(getChatDraft(authUser.id, lastActiveId) || "");
+        } else {
+          removeActiveChatId(authUser.id); // Clear invalid ID from storage
+          lastActiveId = null;
+        }
+      }
+
+      if (!lastActiveId) {
+        startNewChat(false);
+      }
+    } else {
+      // User is not authenticated
+      setMessages([]);
+      setActiveChatSessionId(null);
+      setInputValue("");
+    }
 
     // Speech Recognition Setup
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      speechRecognitionRef.current = new SpeechRecognition();
+      const SpeechRecognitionImpl = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      speechRecognitionRef.current = new SpeechRecognitionImpl();
       speechRecognitionRef.current.continuous = false;
       speechRecognitionRef.current.interimResults = false;
       speechRecognitionRef.current.lang = 'en-US';
@@ -145,9 +177,8 @@ export function ChatbotInterface() {
             toast({variant: "destructive", title: "Speech Error", description: "Could not play audio."})
         };
     }
+  }, [authUser, startNewChat, toast]); // Added toast to dependency array as it's used in onerror
 
-
-  }, [loadInitialData, toast]);
 
   const mutation = useMutation<NutritionChatbotOutput, Error, NutritionChatbotInput>({
     mutationFn: handleChatbotInteraction,
@@ -167,7 +198,7 @@ export function ChatbotInterface() {
         if (currentSession) {
           const updatedSession = { ...currentSession, messages: updatedMessages, updatedAt: new Date().toISOString() };
           saveChatSession(authUser.id, updatedSession);
-          setChatSessions(getAllChatSessions(authUser.id)); // Refresh history list
+          setChatSessions(getAllChatSessions(authUser.id)); 
         }
         return updatedMessages;
       });
@@ -198,30 +229,6 @@ export function ChatbotInterface() {
     },
   });
 
-  const startNewChat = (userInitiated = true) => {
-    if (!authUser) {
-      if (userInitiated) toast({ variant: "destructive", title: "Not Logged In", description: "Please log in." });
-      return;
-    }
-    const newChatId = `chat-${Date.now()}`;
-    const now = new Date().toISOString();
-    const newSession: ChatSession = {
-      id: newChatId,
-      title: `Chat from ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      messages: [{id: `${Date.now()}-init`, role: "system", content: INITIAL_AI_MESSAGE, timestamp: now }],
-      createdAt: now,
-      updatedAt: now,
-      persona: currentPersona
-    };
-    saveChatSession(authUser.id, newSession);
-    setActiveChatSessionId(newChatId);
-    setMessages(newSession.messages);
-    setInputValue("");
-    removeChatDraft(authUser.id, newChatId); // Clear draft for new chat
-    setChatSessions(getAllChatSessions(authUser.id)); // Refresh history list
-    setActiveChatId(authUser.id, newChatId); // Persist active chat ID
-    if (userInitiated) toast({ title: "New Chat Started" });
-  };
 
   const loadChatSession = (sessionId: string) => {
     if (!authUser) return;
@@ -231,10 +238,10 @@ export function ChatbotInterface() {
       setMessages(session.messages);
       setInputValue(getChatDraft(authUser.id, sessionId) || "");
       setActiveChatId(authUser.id, sessionId);
-      setIsHistoryPanelOpen(false); // Close panel after loading
+      setIsHistoryPanelOpen(false); 
     } else {
       toast({ variant: "destructive", title: "Error", description: "Chat session not found." });
-      startNewChat(false); // Fallback to new chat if session is missing
+      startNewChat(false); 
     }
   };
 
@@ -243,7 +250,7 @@ export function ChatbotInterface() {
     deleteChatSession(authUser.id, sessionId);
     setChatSessions(getAllChatSessions(authUser.id));
     if (activeChatSessionId === sessionId) {
-      startNewChat(false); // Start a new chat if the active one was deleted
+      startNewChat(false); 
     }
     toast({ title: "Chat Deleted" });
   };
@@ -299,11 +306,10 @@ export function ChatbotInterface() {
     mutation.mutate({ 
       userId: authUser.id,
       message: currentMessageContent, 
-      history: chatHistoryForApi.slice(-10), // Send last 10 messages for context
+      history: chatHistoryForApi.slice(-10), 
       userProfile: userProfileForApi,
       ...(userApiKey && { apiKey: userApiKey }),
       ...(currentPersona && {persona: currentPersona}),
-      // Consider adding currentPersona to input if AI flow supports it
     });
     setInputValue("");
     removeChatDraft(authUser.id, activeChatSessionId);
@@ -339,7 +345,6 @@ export function ChatbotInterface() {
         speechRecognitionRef.current.start();
         setIsListening(true);
       } catch (error) {
-        // This catch might be redundant if onerror handles it, but good for immediate start errors
         console.error("Error starting speech recognition:", error);
         let description = "Could not start voice input. Please ensure microphone access is allowed.";
         if (error instanceof Error && (error.name === 'NotAllowedError' || error.message.includes('not-allowed'))) {
@@ -533,7 +538,7 @@ export function ChatbotInterface() {
                 className={cn("p-2.5 rounded-lg shadow-sm text-sm",
                   message.role === "user" ? "bg-primary text-primary-foreground" :
                   message.role === "model" ? "bg-muted text-muted-foreground" :
-                  "bg-amber-50 border border-amber-200 text-amber-700" // System message style (e.g. for errors)
+                  "bg-amber-50 border border-amber-200 text-amber-700" 
                 )}
               >
                 <ReactMarkdown
@@ -599,10 +604,15 @@ export function ChatbotInterface() {
             onChange={handleInputChange}
             placeholder="Ask me anything about nutrition..."
             className="flex-grow h-10 text-sm"
-            disabled={mutation.isPending || !authUser}
+            disabled={mutation.isPending || !authUser || !activeChatSessionId}
             aria-label="Chat message input"
           />
-          <Button type="submit" size="icon" disabled={mutation.isPending || !inputValue.trim() || !authUser} className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10">
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={mutation.isPending || !inputValue.trim() || !authUser || !activeChatSessionId} 
+            className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10"
+          >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             <span className="sr-only">Send message</span>
           </Button>
@@ -614,7 +624,7 @@ export function ChatbotInterface() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Provide Feedback</DialogTitle>
-            <DialogDescription>
+            <DialogDescription> {/* Changed from ShadDialogDescription */}
               Help us improve NutriAI! What {feedbackType === 'suggestion' ? 'feature would you like to suggest' : 'went wrong or was misunderstood'}?
             </DialogDescription>
           </DialogHeader>
@@ -637,3 +647,4 @@ export function ChatbotInterface() {
     </div>
   );
 }
+
