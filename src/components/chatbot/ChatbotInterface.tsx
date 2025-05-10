@@ -61,7 +61,6 @@ export function ChatbotInterface() {
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const [pinnedChatIds, setPinnedChatIds] = useState<string[]>([]);
   const [currentPersona, setCurrentPersona] = useState<AIPersona>("Friendly Coach");
-  const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'suggestion' | 'misunderstanding'>('suggestion');
@@ -70,7 +69,6 @@ export function ChatbotInterface() {
 
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
 
@@ -135,38 +133,6 @@ export function ChatbotInterface() {
       setInputValue("");
     }
 
-    // Speech Recognition Setup
-    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognitionImpl = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      speechRecognitionRef.current = new SpeechRecognitionImpl();
-      speechRecognitionRef.current.continuous = false;
-      speechRecognitionRef.current.interimResults = false;
-      speechRecognitionRef.current.lang = 'en-US';
-
-      speechRecognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue(prev => prev + transcript);
-        setIsListening(false);
-      };
-      speechRecognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        let description = "An unknown error occurred with voice input.";
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          description = "Microphone access was denied. Please enable microphone permissions in your browser settings for this site.";
-        } else if (event.error === 'no-speech') {
-          description = "No speech was detected. Please try again.";
-        } else if (event.error === 'audio-capture') {
-          description = "Audio capture failed. Ensure your microphone is working.";
-        } else if (event.error) {
-          description = `Error: ${event.error}.`;
-        }
-        toast({ variant: "destructive", title: "Voice Input Error", description: description });
-        setIsListening(false);
-      };
-      speechRecognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
     // Speech Synthesis Setup
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         speechUtteranceRef.current = new SpeechSynthesisUtterance();
@@ -330,30 +296,6 @@ export function ChatbotInterface() {
     setCurrentPersona(persona);
     if (authUser) saveAIPersona(authUser.id, persona);
     toast({title: "AI Persona Updated", description: `Switched to ${persona}. Start a new chat for the change to fully apply.`})
-  };
-
-  const handleToggleVoiceInput = () => {
-    if (!speechRecognitionRef.current) {
-      toast({variant: "destructive", title: "Voice Input Not Supported", description: "Your browser doesn't support voice input."});
-      return;
-    }
-    if (isListening) {
-      speechRecognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      try {
-        speechRecognitionRef.current.start();
-        setIsListening(true);
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        let description = "Could not start voice input. Please ensure microphone access is allowed.";
-        if (error instanceof Error && (error.name === 'NotAllowedError' || error.message.includes('not-allowed'))) {
-             description = "Microphone access was denied. Please enable microphone permissions in your browser settings for this site.";
-        }
-        toast({ variant: "destructive", title: "Voice Input Error", description });
-        setIsListening(false);
-      }
-    }
   };
 
   const handleSpeakMessage = (text: string) => {
@@ -600,9 +542,6 @@ export function ChatbotInterface() {
           onSubmit={handleSubmit}
           className="p-2.5 border-t bg-background rounded-b-lg flex items-center space-x-2"
         >
-          <Button variant="ghost" size="icon" onClick={handleToggleVoiceInput} type="button" disabled={!speechRecognitionRef.current || mutation.isPending} aria-label={isListening ? "Stop listening" : "Start voice input"}>
-            <Mic className={cn("h-5 w-5", isListening && "text-red-500 animate-pulse")} />
-          </Button>
           <Input
             value={inputValue}
             onChange={handleInputChange}
@@ -652,3 +591,5 @@ export function ChatbotInterface() {
   );
 }
 
+
+```)
