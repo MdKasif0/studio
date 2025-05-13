@@ -1,4 +1,3 @@
-
 "use client"; 
 
 import type { GenerateCustomMealPlanOutput, GenerateCustomMealPlanInput } from "@/ai/flows/generate-custom-meal-plan"; // Assuming Meal is from here
@@ -64,7 +63,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
         setRecipeServings(initialServings);
       }
     }
-  }, [data, authUser?.id]); // Removed authUser from dependencies, only id matters
+  }, [data, authUser?.id]); 
 
   const handleToggleFavorite = useCallback((mealId: string, meal: Meal, dayName?: string) => {
     if (!authUser) {
@@ -110,25 +109,32 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     elementToPrint.style.fontFamily = 'Arial, sans-serif';
     elementToPrint.style.width = '100%'; 
     elementToPrint.style.boxSizing = 'border-box';
+    elementToPrint.style.overflow = 'visible'; // Ensure the card itself allows overflow
+    elementToPrint.style.height = 'auto'; // Ensure height is determined by content
 
     elementToPrint.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, li, div, button, input, textarea, label, legend, strong, em, small').forEach(el => {
         const htmlEl = el as HTMLElement;
-        htmlEl.style.color = 'black'; // Ensure all text is black by default
-        htmlEl.style.backgroundColor = 'transparent'; // Ensure no dark backgrounds from theme persist
+        htmlEl.style.color = 'black'; 
+        htmlEl.style.backgroundColor = 'transparent'; 
         if(htmlEl.classList.contains('bg-primary')) {
-            htmlEl.style.backgroundColor = '#e0e0e0'; // Light grey for primary background areas
+            htmlEl.style.backgroundColor = '#e0e0e0'; 
         }
          if (htmlEl.classList.contains('text-primary')) {
-            htmlEl.style.color = '#003366'; // Dark blue for primary text
+            htmlEl.style.color = '#003366'; 
         }
         if (htmlEl.classList.contains('text-accent')) {
-            htmlEl.style.color = '#8B0000'; // Dark red for accent text
+            htmlEl.style.color = '#8B0000'; 
         }
         if (htmlEl.classList.contains('text-primary-foreground')) {
-            htmlEl.style.color = '#000000'; // Black for primary foreground
+            htmlEl.style.color = '#000000'; 
         }
         if (htmlEl.classList.contains('text-muted-foreground')) {
-             htmlEl.style.color = '#444444'; // Darker grey for muted text
+             htmlEl.style.color = '#444444'; 
+        }
+         // Ensure any specific card content areas also allow overflow
+        if (htmlEl.classList.contains('card-content-class-for-pdf')) { // Replace with actual class if CardContent has one
+            htmlEl.style.overflow = 'visible';
+            htmlEl.style.height = 'auto';
         }
     });
     
@@ -141,15 +147,14 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     
     elementToPrint.querySelectorAll('.text-primary').forEach(el => (el as HTMLElement).style.color = '#003366');
     elementToPrint.querySelectorAll('.bg-primary').forEach(el => {
-        (el as HTMLElement).style.backgroundColor = '#f0f8ff'; // Very light blue for primary backgrounds
+        (el as HTMLElement).style.backgroundColor = '#f0f8ff'; 
         (el as HTMLElement).style.color = '#003366';
         (el as HTMLElement).style.padding = '8px';
         (el as HTMLElement).style.borderRadius = '4px';
     });
-     elementToPrint.querySelectorAll('.text-accent').forEach(el => (el as HTMLElement).style.color = '#8B0000'); // Dark red for accent text
+     elementToPrint.querySelectorAll('.text-accent').forEach(el => (el as HTMLElement).style.color = '#8B0000'); 
 
 
-    // Ensure all accordion items are open and styled for print
     elementToPrint.querySelectorAll('div[data-radix-accordion-item]').forEach(item => {
         const trigger = item.querySelector('button[data-radix-accordion-trigger]') as HTMLElement | null;
         const content = item.querySelector('div[data-radix-accordion-content]') as HTMLElement | null;
@@ -170,21 +175,18 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
             content.style.opacity = '1';
             content.style.visibility = 'visible';
             content.style.overflow = 'visible';
-            // Remove animation classes that might hide content
             content.classList.remove('data-[state=closed]:animate-accordion-up', 'data-[state=open]:animate-accordion-down');
         }
     });
     
-    // Ensure ScrollArea content is fully visible
     elementToPrint.querySelectorAll('div[data-radix-scroll-area-viewport]').forEach(viewport => {
         (viewport as HTMLElement).style.height = 'auto';
         (viewport as HTMLElement).style.overflow = 'visible';
     });
     elementToPrint.querySelectorAll('.scrollbar-thin').forEach(scrollAreaRoot => {
-         (scrollAreaRoot as HTMLElement).style.overflow = 'visible'; // for the root of scrollarea
+         (scrollAreaRoot as HTMLElement).style.overflow = 'visible'; 
     });
 
-    // Hide irrelevant buttons explicitly
     elementToPrint.querySelectorAll('button').forEach(btn => {
         const button = btn as HTMLElement;
         const ariaLabel = button.getAttribute('aria-label') || "";
@@ -198,7 +200,6 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
             buttonText.includes('order with amazon fresh')) {
             button.style.display = 'none';
         }
-        // Preserve serving adjustment buttons
         if(buttonText.includes('serv.')) {
             button.style.border = '1px solid #ccc';
             button.style.padding = '2px 4px';
@@ -207,7 +208,6 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
      elementToPrint.querySelectorAll('.lucide-heart').forEach(icon => (icon as HTMLElement).style.display = 'none');
 
 
-    // Add a clear title for the PDF
     const pdfTitleElement = document.createElement('div');
     pdfTitleElement.innerHTML = `
       <h1 style="text-align: center; font-size: 22px; margin-bottom: 5px; color: #003366;">Nutri AI Meal Plan</h1>
@@ -215,12 +215,13 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     `;
     elementToPrint.insertBefore(pdfTitleElement, elementToPrint.firstChild);
 
-    // Wrap the cloned element in a container that html2pdf will use
     const printContainer = document.createElement('div');
     printContainer.style.position = 'absolute';
-    printContainer.style.left = '-9999px'; // Position off-screen to avoid visual flash
-    printContainer.style.width = '210mm'; // A4 width to help with layout calculation
-    printContainer.style.backgroundColor = 'white'; // Ensure container itself has white bg
+    printContainer.style.left = '-9999px'; 
+    printContainer.style.width = '210mm'; 
+    printContainer.style.height = 'auto'; // Ensure height is also auto for the container
+    printContainer.style.overflow = 'visible'; // Container should also allow overflow
+    printContainer.style.backgroundColor = 'white'; 
     printContainer.appendChild(elementToPrint);
     document.body.appendChild(printContainer);
     
@@ -228,10 +229,17 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     const pdfFilename = `${safeTitle}.pdf`;
 
     const opt = {
-      margin: 10, //統一邊距為10mm
+      margin: 10, 
       filename: pdfFilename,
       image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: true, // Enable logging for html2canvas
+        backgroundColor: '#ffffff',
+        letterRendering: true, // Added for potentially better text rendering
+        // Ensure canvas is large enough, avoid width/height options here if element dictates size
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
@@ -246,7 +254,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
       })
       .finally(() => {
         setIsGeneratingPdf(false);
-        document.body.removeChild(printContainer); // Clean up the temporary container
+        document.body.removeChild(printContainer); 
       });
   };
 
@@ -254,7 +262,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
   const handleServingsChange = (mealId: string, change: number) => {
     setRecipeServings(prev => {
       const currentServings = prev[mealId] || 1;
-      const newServings = Math.max(1, currentServings + change); // Ensure servings don't go below 1
+      const newServings = Math.max(1, currentServings + change); 
       return { ...prev, [mealId]: newServings };
     });
     toast({
@@ -274,9 +282,6 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
       nutAllergy: ['nut', 'nuts', 'almond', 'walnut', 'cashew', 'pecan', 'pistachio', 'macadamia', 'peanut'],
       shellfishAllergy: ['shellfish', 'shrimp', 'crab', 'lobster', 'oyster', 'mussel', 'clam', 'prawn'],
       soyAllergy: ['soy', 'tofu', 'tempeh', 'miso', 'edamame', 'soybean', 'soy sauce'],
-      // For dairyFree and glutenFree, if the user *IS* dairyFree/glutenFree, we look for ingredients that *AREN'T* these.
-      // This is tricky with simple keyword search. The AI should ideally handle this.
-      // For now, this alert focuses on positive matches for allergies.
     };
 
     Object.entries(userDietaryRestrictions).forEach(([restrictionKey, isActiveOrOther]) => {
@@ -300,7 +305,6 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
 
   return (
     <div className="mt-8 space-y-6">
-      {/* This Card is what will be cloned for PDF generation */}
       <Card className="shadow-lg" data-ai-hint="cache results meal plan" ref={mealPlanCardRef}>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -487,4 +491,3 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     </div>
   );
 }
-
