@@ -64,7 +64,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
         setRecipeServings(initialServings);
       }
     }
-  }, [data, authUser?.id]);
+  }, [data, authUser?.id]); // Removed authUser from dependencies, only id matters
 
   const handleToggleFavorite = useCallback((mealId: string, meal: Meal, dayName?: string) => {
     if (!authUser) {
@@ -96,27 +96,160 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
 
   const handleDownloadPdf = () => {
     if (!mealPlanCardRef.current) {
-      console.error("Meal plan element not found for PDF generation.");
+      toast({ variant: "destructive", title: "Error", description: "Meal plan content not found for PDF generation." });
       return;
     }
     setIsGeneratingPdf(true);
-    const elementToPrint = mealPlanCardRef.current;
-    const safeTitle = data.mealPlanTitle ? data.mealPlanTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'custom_meal_plan';
+
+    const originalElement = mealPlanCardRef.current;
+    const elementToPrint = originalElement.cloneNode(true) as HTMLElement;
+
+    // --- Apply PDF-specific styles and modifications to the CLONE ---
+    elementToPrint.style.backgroundColor = 'white';
+    elementToPrint.style.color = 'black';
+    elementToPrint.style.fontFamily = 'Arial, sans-serif';
+    elementToPrint.style.width = '100%'; 
+    elementToPrint.style.boxSizing = 'border-box';
+
+    elementToPrint.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, li, div, button, input, textarea, label, legend, strong, em, small').forEach(el => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.color = 'black'; // Ensure all text is black by default
+        htmlEl.style.backgroundColor = 'transparent'; // Ensure no dark backgrounds from theme persist
+        if(htmlEl.classList.contains('bg-primary')) {
+            htmlEl.style.backgroundColor = '#e0e0e0'; // Light grey for primary background areas
+        }
+         if (htmlEl.classList.contains('text-primary')) {
+            htmlEl.style.color = '#003366'; // Dark blue for primary text
+        }
+        if (htmlEl.classList.contains('text-accent')) {
+            htmlEl.style.color = '#8B0000'; // Dark red for accent text
+        }
+        if (htmlEl.classList.contains('text-primary-foreground')) {
+            htmlEl.style.color = '#000000'; // Black for primary foreground
+        }
+        if (htmlEl.classList.contains('text-muted-foreground')) {
+             htmlEl.style.color = '#444444'; // Darker grey for muted text
+        }
+    });
+    
+    elementToPrint.querySelectorAll('.shadow-lg, .shadow-xl').forEach(card => {
+        (card as HTMLElement).style.boxShadow = 'none';
+        (card as HTMLElement).style.border = '1px solid #ddd';
+        (card as HTMLElement).style.backgroundColor = 'white';
+        (card as HTMLElement).style.marginBottom = '10px';
+    });
+    
+    elementToPrint.querySelectorAll('.text-primary').forEach(el => (el as HTMLElement).style.color = '#003366');
+    elementToPrint.querySelectorAll('.bg-primary').forEach(el => {
+        (el as HTMLElement).style.backgroundColor = '#f0f8ff'; // Very light blue for primary backgrounds
+        (el as HTMLElement).style.color = '#003366';
+        (el as HTMLElement).style.padding = '8px';
+        (el as HTMLElement).style.borderRadius = '4px';
+    });
+     elementToPrint.querySelectorAll('.text-accent').forEach(el => (el as HTMLElement).style.color = '#8B0000'); // Dark red for accent text
+
+
+    // Ensure all accordion items are open and styled for print
+    elementToPrint.querySelectorAll('div[data-radix-accordion-item]').forEach(item => {
+        const trigger = item.querySelector('button[data-radix-accordion-trigger]') as HTMLElement | null;
+        const content = item.querySelector('div[data-radix-accordion-content]') as HTMLElement | null;
+
+        if (trigger) {
+            trigger.style.fontWeight = 'bold';
+            trigger.style.fontSize = '1.1em';
+            trigger.style.padding = '10px 0';
+            trigger.style.borderBottom = '1px solid #ccc';
+            trigger.style.marginBottom = '10px';
+            const chevron = trigger.querySelector('svg');
+            if (chevron) chevron.style.display = 'none';
+        }
+        if (content) {
+            content.setAttribute('data-state', 'open');
+            content.style.display = 'block';
+            content.style.height = 'auto';
+            content.style.opacity = '1';
+            content.style.visibility = 'visible';
+            content.style.overflow = 'visible';
+            // Remove animation classes that might hide content
+            content.classList.remove('data-[state=closed]:animate-accordion-up', 'data-[state=open]:animate-accordion-down');
+        }
+    });
+    
+    // Ensure ScrollArea content is fully visible
+    elementToPrint.querySelectorAll('div[data-radix-scroll-area-viewport]').forEach(viewport => {
+        (viewport as HTMLElement).style.height = 'auto';
+        (viewport as HTMLElement).style.overflow = 'visible';
+    });
+    elementToPrint.querySelectorAll('.scrollbar-thin').forEach(scrollAreaRoot => {
+         (scrollAreaRoot as HTMLElement).style.overflow = 'visible'; // for the root of scrollarea
+    });
+
+    // Hide irrelevant buttons explicitly
+    elementToPrint.querySelectorAll('button').forEach(btn => {
+        const button = btn as HTMLElement;
+        const ariaLabel = button.getAttribute('aria-label') || "";
+        const buttonText = button.textContent?.trim().toLowerCase() || "";
+
+        if (ariaLabel.includes('Download meal plan as PDF') || 
+            ariaLabel.includes('Add to calendar') ||
+            ariaLabel.includes('Add to favorites') ||
+            ariaLabel.includes('Remove from favorites') ||
+            buttonText.includes('order with instacart') ||
+            buttonText.includes('order with amazon fresh')) {
+            button.style.display = 'none';
+        }
+        // Preserve serving adjustment buttons
+        if(buttonText.includes('serv.')) {
+            button.style.border = '1px solid #ccc';
+            button.style.padding = '2px 4px';
+        }
+    });
+     elementToPrint.querySelectorAll('.lucide-heart').forEach(icon => (icon as HTMLElement).style.display = 'none');
+
+
+    // Add a clear title for the PDF
+    const pdfTitleElement = document.createElement('div');
+    pdfTitleElement.innerHTML = `
+      <h1 style="text-align: center; font-size: 22px; margin-bottom: 5px; color: #003366;">Nutri AI Meal Plan</h1>
+      <h2 style="text-align: center; font-size: 18px; margin-bottom: 20px; color: #333;">${data.mealPlanTitle || "Custom Plan"}</h2>
+    `;
+    elementToPrint.insertBefore(pdfTitleElement, elementToPrint.firstChild);
+
+    // Wrap the cloned element in a container that html2pdf will use
+    const printContainer = document.createElement('div');
+    printContainer.style.position = 'absolute';
+    printContainer.style.left = '-9999px'; // Position off-screen to avoid visual flash
+    printContainer.style.width = '210mm'; // A4 width to help with layout calculation
+    printContainer.style.backgroundColor = 'white'; // Ensure container itself has white bg
+    printContainer.appendChild(elementToPrint);
+    document.body.appendChild(printContainer);
+    
+    const safeTitle = data.mealPlanTitle ? data.mealPlanTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'nutriai_meal_plan';
     const pdfFilename = `${safeTitle}.pdf`;
+
     const opt = {
-      margin: 0.5, filename: pdfFilename, image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+      margin: 10, //統一邊距為10mm
+      filename: pdfFilename,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-    html2pdf().from(elementToPrint).set(opt).save()
-      .then(() => setIsGeneratingPdf(false))
+
+    html2pdf().from(printContainer).set(opt).save()
+      .then(() => {
+        toast({ title: "PDF Downloaded", description: "Your meal plan has been saved as a PDF." });
+      })
       .catch((err: Error) => {
         console.error("Error generating PDF:", err);
+        toast({ variant: "destructive", title: "PDF Error", description: "Could not generate PDF. " + err.message });
+      })
+      .finally(() => {
         setIsGeneratingPdf(false);
-        toast({ variant: "destructive", title: "PDF Error", description: "Could not generate PDF." });
+        document.body.removeChild(printContainer); // Clean up the temporary container
       });
   };
+
 
   const handleServingsChange = (mealId: string, change: number) => {
     setRecipeServings(prev => {
@@ -167,6 +300,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
 
   return (
     <div className="mt-8 space-y-6">
+      {/* This Card is what will be cloned for PDF generation */}
       <Card className="shadow-lg" data-ai-hint="cache results meal plan" ref={mealPlanCardRef}>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -191,8 +325,8 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
         <CardContent>
           <Accordion type="single" collapsible className="w-full" defaultValue={`day-0`}>
             {data.dailyPlans?.map((dailyPlan, dayIndex) => (
-              <AccordionItem value={`day-${dayIndex}`} key={`day-${dayIndex}`}>
-                <AccordionTrigger className="text-lg font-semibold hover:text-accent">
+              <AccordionItem value={`day-${dayIndex}`} key={`day-${dayIndex}`} data-radix-accordion-item>
+                <AccordionTrigger className="text-lg font-semibold hover:text-accent" data-radix-accordion-trigger>
                   {dailyPlan.day}
                   {dailyPlan.estimatedCalories && (
                      <span className="text-sm font-normal text-muted-foreground ml-2 flex items-center">
@@ -207,7 +341,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                      </span>
                   )}
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4 pl-2">
+                <AccordionContent className="space-y-4 pl-2" data-radix-accordion-content>
                   {dailyPlan.meals?.map((meal, mealIndex) => {
                     const mealId = generateMealId(dayIndex, mealIndex, meal);
                     const currentServings = recipeServings[mealId] || meal.servings || 1;
@@ -225,7 +359,7 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
                           onClick={() => handleToggleFavorite(mealId, meal, dailyPlan.day)}
                           aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
                         >
-                          <Heart className={cn("h-5 w-5", isFav && "fill-current")} />
+                          <Heart className={cn("h-5 w-5 lucide-heart", isFav && "fill-current")} />
                         </Button>
                         <h4 className="font-medium text-md text-primary-foreground bg-primary rounded-t-md px-3 py-1 -mx-3 -mt-3 mb-2 flex justify-between items-center">
                           <span>{meal.name}: {meal.dish}</span>
@@ -353,3 +487,4 @@ export function MealPlanDisplay({ data }: MealPlanDisplayProps) {
     </div>
   );
 }
+
